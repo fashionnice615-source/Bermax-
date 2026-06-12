@@ -1079,9 +1079,17 @@ function startCd(){
   document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
   const btn=document.getElementById("rbtn");btn.disabled=true;btn.textContent="Renvoyer ("+s+"s)";
   cdTimer=setInterval(()=>{
-    s--;document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
+    s--;
+    if(s<=0){
+      clearInterval(cdTimer);
+      btn.disabled=false;btn.textContent="Renvoyer le code";
+      document.getElementById("cdown").textContent="expiré";
+      document.getElementById("rtimer").textContent="0";
+      smsCode="";
+      return;
+    }
+    document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
     btn.textContent="Renvoyer ("+s+"s)";
-    if(s<=0){clearInterval(cdTimer);btn.disabled=false;btn.textContent="Renvoyer le code";document.getElementById("cdown").textContent="expiré";smsCode="";}
   },1000);
 }
 function cinp(el,idx){
