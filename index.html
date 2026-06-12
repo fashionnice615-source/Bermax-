@@ -697,20 +697,33 @@ async function searchUserByEmail(){
   btn.textContent="🔍 Recherche...";btn.disabled=true;
 
   const safeId=email.replace(/[^a-zA-Z0-9]/g,"_");
-  const r=window._ref(window._db,"users/"+safeId);
+  const rNew=window._ref(window._db,"users/"+safeId+"/profile");
 
-  window._onValue(r,snap=>{
-    btn.textContent="🔍 Rechercher";btn.disabled=false;
+  window._onValue(rNew,snap=>{
     const data=snap.val();
-    result.style.display="block";
     if(data){
+      btn.textContent="🔍 Rechercher";btn.disabled=false;
+      result.style.display="block";
       result.style.background="#1a4d2e";
       result.innerHTML=`✅ Utilisateur trouvé !<br/><b>${email}</b>`;
       addUserAsContact(email, data);
-    }else{
-      result.style.background="#4d1a1a";
-      result.textContent="❌ Aucun utilisateur trouvé avec cet e-mail";
+      return;
     }
+    // Fallback : ancien format (compte créé avant la mise à jour)
+    const rOld=window._ref(window._db,"users/"+safeId);
+    window._onValue(rOld,snap2=>{
+      btn.textContent="🔍 Rechercher";btn.disabled=false;
+      const dataOld=snap2.val();
+      result.style.display="block";
+      if(dataOld && dataOld.email){
+        result.style.background="#1a4d2e";
+        result.innerHTML=`✅ Utilisateur trouvé !<br/><b>${email}</b>`;
+        addUserAsContact(email, dataOld);
+      }else{
+        result.style.background="#4d1a1a";
+        result.textContent="❌ Aucun utilisateur trouvé avec cet e-mail";
+      }
+    },{onlyOnce:true});
   },{onlyOnce:true});
 }
 
