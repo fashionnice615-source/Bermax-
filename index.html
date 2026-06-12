@@ -723,22 +723,79 @@ function addUserAsContact(email, userData){
   }
   const color=userData.color || COLORS[Math.floor(Math.random()*COLORS.length)];
   const ini=email.substring(0,2).toUpperCase();
-  myContacts.push({id, name:email, phone:email, color, ini, online:false, pic:userData.pic||""});
-  saveContactsLocal();
+  const contact={id, name:email, phone:email, color, ini, online:false, pic:userData.pic||""};
+  myContacts.push(contact);
+  saveContactToFirebase(contact);
+
+  // Ajouter aussi l'utilisateur actuel dans la liste de contacts de l'autre personne
+  // pour qu'elle voie la discussion de son côté
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const myColorFinal = myColor || COLORS[Math.floor(Math.random()*COLORS.length)];
+  const myIni = myEmail.substring(0,2).toUpperCase();
+  const reciprocal={id:myId, name:myEmail, phone:myEmail, color:myColorFinal, ini:myIni, online:false, pic:picData||""};
+  if(window._firebaseReady){
+    const r=window._ref(window._db,"users/"+id+"/contacts/"+myId);
+    window._set(r,reciprocal);
+  }
+
   setTimeout(()=>{
     closeAdd();renderContacts();switchNav("contacts");
     showToast("✅ Contact ajouté : "+email);
   },1000);
 }
 
-function saveContactsLocal(){
-  localStorage.setItem("bermax_contacts", JSON.stringify(myContacts));
+// Sauvegarde un contact dans Firebase sous le compte de l'utilisateur connecté
+function saveContactToFirebase(contact){
+  if(!window._firebaseReady||!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const r=window._ref(window._db,"users/"+myId+"/contacts/"+contact.id);
+  window._set(r,contact);
 }
-function loadContactsLocal(){
-  const saved=localStorage.getItem("bermax_contacts");
-  if(saved){
-    try{ myContacts = JSON.parse(saved); }catch(e){ myContacts=[]; }
-  }
+
+// Charge la liste des contacts de l'utilisateur depuis Firebase (synchro multi-appareils)
+function loadContactsFromFirebase(){
+  if(!window._firebaseReady||!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const r=window._ref(window._db,"users/"+myId+"/contacts");
+  window._onValue(r,snap=>{
+    const list=[];
+    snap.forEach(child=>{ list.push(child.val()); });
+    myContacts=list;
+    renderContacts();
+    // Initialise les discussions à partir des contacts retrouvés
+    list.forEach(c=>{
+      if(!contacts.find(x=>x.id===c.id)){
+        contacts.push({id:c.id,name:c.name,ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});
+      }
+    });
+    renderChats(document.getElementById("search-inp").value);
+    // S'abonner aux messages de chaque discussion pour afficher l'aperçu
+    contacts.forEach(c=>subscribeToChat(c));
+  });
+}
+
+// Écoute les messages d'une discussion pour mettre à jour la liste (aperçu, badge)
+function subscribeToChat(c){
+  if(!window._firebaseReady)return;
+  c._subscribed=true;
+  const chatId=getChatId(c.name);
+  const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+  window._onValue(r,snap=>{
+    const msgs=[];
+    snap.forEach(child=>{
+      const v=child.val();
+      msgs.push({
+        id:child.key,
+        from: v.sender===myEmail ? "me" : "them",
+        text:v.text, type:v.type, data:v.data,
+        time:v.time, read:v.read,
+        del_all:v.del_all, del_me:v.del_me
+      });
+    });
+    c.msgs=msgs;
+    renderChats(document.getElementById("search-inp").value);
+    if(activeId===c.id) renderMsgs(c);
+  });
 }
 
 // ══ CHAT LIST ══════════════════════════════════════════════════════════
@@ -789,25 +846,10 @@ function openChat(id){
   renderMsgs(c);
   document.getElementById("msg-input").focus();
 
-  // Listen to Firebase messages for this chat
-  if(window._firebaseReady){
-    const chatId=getChatId(c.name);
-    const r=window._ref(window._db,"chats/"+chatId+"/msgs");
-    window._onValue(r,snap=>{
-      const msgs=[];
-      snap.forEach(child=>{
-        const v=child.val();
-        msgs.push({
-          id:child.key,
-          from: v.sender===myEmail ? "me" : "them",
-          text:v.text, type:v.type, data:v.data,
-          time:v.time, read:v.read,
-          del_all:v.del_all, del_me:v.del_me
-        });
-      });
-      c.msgs=msgs;
-      if(activeId===id){renderMsgs(c);renderChats(document.getElementById("search-inp").value);}
-    });
+  // S'assurer qu'on écoute bien les messages de cette discussion
+  if(window._firebaseReady && !c._subscribed){
+    c._subscribed=true;
+    subscribeToChat(c);
   }
 }
 function goBack(){
@@ -1154,8 +1196,9 @@ function loginOk(){
   if(picData) localStorage.setItem("bermax_pic", picData);
   if(window._firebaseReady){
     const safeId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
-    const r=window._ref(window._db,"users/"+safeId);
+    const r=window._ref(window._db,"users/"+safeId+"/profile");
     window._set(r,{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
+    loadContactsFromFirebase();
   }
   setTimeout(()=>document.getElementById("login").classList.add("hidden"),700);
 }
@@ -1186,7 +1229,6 @@ function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g
 window.addEventListener("resize",()=>{if(activeId)scrollBot();});
 
 // ══ INIT ════════════════════════════════════════════════════════════════
-loadContactsLocal();
 buildEmoji();
 renderChats();
 renderContacts();
@@ -1200,6 +1242,9 @@ if(savedEmail){
   picData = localStorage.getItem("bermax_pic") || null;
   applyAvatar();
   document.getElementById("login").classList.add("hidden");
+  // Charger les discussions et contacts depuis Firebase (synchro multi-appareils)
+  window.addEventListener("firebaseReady", loadContactsFromFirebase);
+  if(window._firebaseReady) loadContactsFromFirebase();
 } else {
   document.getElementById("login").classList.remove("hidden");
 }
