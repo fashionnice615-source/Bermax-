@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>Bermax</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -1076,20 +1079,24 @@ function showSmsPanel(phone){
 function startCd(){
   clearInterval(cdTimer);
   let s=60;
-  document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
-  const btn=document.getElementById("rbtn");btn.disabled=true;btn.textContent="Renvoyer ("+s+"s)";
+  document.getElementById("cdown").textContent=s;
+  const btn=document.getElementById("rbtn");
+  btn.disabled=true;
+  // Recreate the inner span each time so it always exists
+  btn.innerHTML='Renvoyer (<span id="rtimer">'+s+'</span>s)';
   cdTimer=setInterval(()=>{
     s--;
     if(s<=0){
       clearInterval(cdTimer);
-      btn.disabled=false;btn.textContent="Renvoyer le code";
+      btn.disabled=false;btn.innerHTML="Renvoyer le code";
       document.getElementById("cdown").textContent="expiré";
-      document.getElementById("rtimer").textContent="0";
       smsCode="";
       return;
     }
-    document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
-    btn.textContent="Renvoyer ("+s+"s)";
+    document.getElementById("cdown").textContent=s;
+    const rt=document.getElementById("rtimer");
+    if(rt) rt.textContent=s;
+    else btn.innerHTML='Renvoyer (<span id="rtimer">'+s+'</span>s)';
   },1000);
 }
 function cinp(el,idx){
