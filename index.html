@@ -389,11 +389,12 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="add-modal" class="backdrop" onclick="closeAdd(event)">
   <div class="sheet">
     <div class="shandle"></div>
-    <div class="stitle">➕ Nouveau contact</div>
-    <input type="text" id="nc-name" placeholder="Nom du contact" maxlength="30"/>
-    <input type="tel" id="nc-phone" placeholder="Numéro ex: +22961234567"/>
-    <div id="nc-err" class="lerr">Veuillez remplir tous les champs</div>
-    <button class="lbtn" onclick="saveContact()">✅ Ajouter</button>
+    <div class="stitle">➕ Trouver un contact</div>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:-6px;">Entrez l'adresse e-mail Bermax de la personne</p>
+    <input type="email" id="nc-email" placeholder="exemple@email.com"/>
+    <div id="nc-err" class="lerr">Veuillez entrer un e-mail valide</div>
+    <div id="nc-result" style="display:none;text-align:center;padding:10px;font-size:13px;"></div>
+    <button class="lbtn" id="nc-search-btn" onclick="searchUserByEmail()">🔍 Rechercher</button>
     <button class="lbtn2" onclick="closeAdd()">Annuler</button>
   </div>
 </div>
@@ -605,28 +606,9 @@ if(window.emailjs) emailjs.init(EMAILJS_PUBLIC_KEY);
 const EMOJIS=["😊","😂","❤️","👍","🙏","🔥","🎉","😢","😮","😡","🤔","👏","🥳","😎","💪","🌟","✅","🚀","💬","🎵"];
 const COLORS=["#6c3fc8","#d4842e","#2e7dd4","#c4425a","#2ea68a","#8a2ea6","#e05c2a","#1a8a6c"];
 
-const contacts=[
-  {id:"sophie",name:"Sophie M.",ini:"SM",color:"#6c3fc8",status:"En ligne",msgs:[
-    {id:1,from:"them",text:"Salut ! Comment ça va ? 😊",time:"09:12",read:true},
-    {id:2,from:"me",text:"Très bien merci ! Et toi ?",time:"09:14",read:true},
-    {id:3,from:"them",text:"On devrait se retrouver ce weekend !",time:"09:22",read:false},
-  ],unread:1},
-  {id:"jean",name:"Jean-Luc B.",ini:"JB",color:"#d4842e",status:"Vu à 14h30",msgs:[
-    {id:1,from:"them",text:"La réunion est confirmée pour lundi à 9h.",time:"Hier",read:true},
-    {id:2,from:"me",text:"Parfait, j\'y serai !",time:"Hier",read:true},
-  ],unread:0},
-  {id:"maman",name:"Maman 💕",ini:"MA",color:"#c4425a",status:"En ligne",msgs:[
-    {id:1,from:"them",text:"Tu viendras dîner dimanche ?",time:"Dim",read:true},
-    {id:2,from:"me",text:"Bien sûr, avec plaisir ! 😊",time:"Dim",read:true},
-  ],unread:0},
-];
+const contacts=[];
 
-let myContacts=[
-  {id:"sophie",name:"Sophie M.",phone:"+22961000001",color:"#6c3fc8",ini:"SM",online:true},
-  {id:"jean",name:"Jean-Luc B.",phone:"+22961000002",color:"#d4842e",ini:"JB",online:false},
-  {id:"maman",name:"Maman 💕",phone:"+22961000003",color:"#c4425a",ini:"MA",online:true},
-  {id:"david",name:"David R.",phone:"+22961000004",color:"#2ea68a",ini:"DR",online:false},
-];
+let myContacts=[];
 
 // ══ NAV ════════════════════════════════════════════════════════════════
 function switchNav(tab){
@@ -641,15 +623,19 @@ function renderContacts(f){
   f=(f||"").toLowerCase();
   const list=document.getElementById("contacts-list");
   list.innerHTML="";
-  const fl=myContacts.filter(c=>c.name.toLowerCase().includes(f)||c.phone.includes(f));
-  if(!fl.length){list.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px;">Aucun contact</div>';return;}
+  const fl=myContacts.filter(c=>c.name.toLowerCase().includes(f)||(c.phone||"").includes(f));
+  if(!fl.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px;">Aucun contact<br/><br/>Appuie sur ➕ pour ajouter un contact via son e-mail</div>';
+    return;
+  }
   const sorted=[...fl].sort((a,b)=>a.name.localeCompare(b.name));
   let cur="";
   sorted.forEach(c=>{
     const l=c.name[0].toUpperCase();
     if(l!==cur){cur=l;const d=document.createElement("div");d.className="cletter";d.textContent=l;list.appendChild(d);}
     const div=document.createElement("div");div.className="citem";
-    div.innerHTML=`<div class="av" style="background:${c.color}">${c.ini}${c.online?'<div class="dot"></div>':''}</div><div style="flex:1;min-width:0;"><div class="cname">${c.name}</div><div class="cphone">${c.phone}</div></div><button class="cmsg-btn" onclick="startChatContact('${c.id}')">💬</button>`;
+    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : c.ini;
+    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.online?'<div class="dot"></div>':''}</div><div style="flex:1;min-width:0;"><div class="cname">${c.name}</div><div class="cphone">${c.phone||""}</div></div><button class="cmsg-btn" onclick="startChatContact('${c.id}')">💬</button>`;
     list.appendChild(div);
   });
 }
@@ -658,24 +644,91 @@ function startChatContact(id){
   switchNav("chats");
   const c=myContacts.find(x=>x.id===id);
   if(!c)return;
-  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,ini:c.ini,color:c.color,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
+  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
   renderChats();openChat(id);
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
 }
-function openAddContact(){document.getElementById("add-modal").classList.add("show");document.getElementById("nc-name").focus();}
-function closeAdd(e){if(e&&e.target!==document.getElementById("add-modal"))return;document.getElementById("add-modal").classList.remove("show");document.getElementById("nc-name").value="";document.getElementById("nc-phone").value="";}
-function saveContact(){
-  const n=document.getElementById("nc-name").value.trim();
-  const p=document.getElementById("nc-phone").value.trim();
+function openAddContact(){
+  document.getElementById("add-modal").classList.add("show");
+  document.getElementById("nc-email").value="";
+  document.getElementById("nc-email").focus();
+  document.getElementById("nc-result").style.display="none";
+  document.getElementById("nc-err").classList.remove("show");
+}
+function closeAdd(e){
+  if(e&&e.target!==document.getElementById("add-modal"))return;
+  document.getElementById("add-modal").classList.remove("show");
+  document.getElementById("nc-email").value="";
+  document.getElementById("nc-result").style.display="none";
+}
+
+async function searchUserByEmail(){
+  const email=document.getElementById("nc-email").value.trim();
   const err=document.getElementById("nc-err");
-  if(!n||!p){err.classList.add("show");return;}
+  const result=document.getElementById("nc-result");
+  if(!email||!isValidEmail(email)){err.classList.add("show");return;}
   err.classList.remove("show");
-  const color=COLORS[Math.floor(Math.random()*COLORS.length)];
-  const ini=n.split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase();
-  const id="c_"+Date.now();
-  myContacts.push({id,name:n,phone:p,color,ini,online:false});
-  closeAdd();renderContacts();switchNav("contacts");
-  showToast("✅ Contact ajouté : "+n);
+
+  if(!window._firebaseReady){
+    result.style.display="block";
+    result.style.background="#4d1a1a";
+    result.textContent="❌ Connexion Firebase indisponible";
+    return;
+  }
+
+  if(email.toLowerCase()===myEmail.toLowerCase()){
+    result.style.display="block";
+    result.style.background="#4d1a1a";
+    result.textContent="❌ Vous ne pouvez pas vous ajouter vous-même";
+    return;
+  }
+
+  const btn=document.getElementById("nc-search-btn");
+  btn.textContent="🔍 Recherche...";btn.disabled=true;
+
+  const safeId=email.replace(/[^a-zA-Z0-9]/g,"_");
+  const r=window._ref(window._db,"users/"+safeId);
+
+  window._onValue(r,snap=>{
+    btn.textContent="🔍 Rechercher";btn.disabled=false;
+    const data=snap.val();
+    result.style.display="block";
+    if(data){
+      result.style.background="#1a4d2e";
+      result.innerHTML=`✅ Utilisateur trouvé !<br/><b>${email}</b>`;
+      addUserAsContact(email, data);
+    }else{
+      result.style.background="#4d1a1a";
+      result.textContent="❌ Aucun utilisateur trouvé avec cet e-mail";
+    }
+  },{onlyOnce:true});
+}
+
+function addUserAsContact(email, userData){
+  const id=email.replace(/[^a-zA-Z0-9]/g,"_");
+  if(myContacts.find(x=>x.id===id)){
+    showToast("ℹ️ Ce contact existe déjà");
+    setTimeout(()=>{closeAdd();switchNav("contacts");},800);
+    return;
+  }
+  const color=userData.color || COLORS[Math.floor(Math.random()*COLORS.length)];
+  const ini=email.substring(0,2).toUpperCase();
+  myContacts.push({id, name:email, phone:email, color, ini, online:false, pic:userData.pic||""});
+  saveContactsLocal();
+  setTimeout(()=>{
+    closeAdd();renderContacts();switchNav("contacts");
+    showToast("✅ Contact ajouté : "+email);
+  },1000);
+}
+
+function saveContactsLocal(){
+  localStorage.setItem("bermax_contacts", JSON.stringify(myContacts));
+}
+function loadContactsLocal(){
+  const saved=localStorage.getItem("bermax_contacts");
+  if(saved){
+    try{ myContacts = JSON.parse(saved); }catch(e){ myContacts=[]; }
+  }
 }
 
 // ══ CHAT LIST ══════════════════════════════════════════════════════════
@@ -683,34 +736,69 @@ function renderChats(f){
   f=(f||"").toLowerCase();
   const list=document.getElementById("chat-list");
   list.innerHTML="";
-  contacts.filter(c=>c.name.toLowerCase().includes(f)).forEach(c=>{
+  const filtered = contacts.filter(c=>c.name.toLowerCase().includes(f));
+  if(!filtered.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px 20px;font-size:13px;line-height:1.6;">Aucune discussion.<br/><br/>Va dans 👥 Contacts et ajoute quelqu\'un via son e-mail pour commencer à discuter !</div>';
+    return;
+  }
+  filtered.forEach(c=>{
     const last=c.msgs[c.msgs.length-1];
     const div=document.createElement("div");
     div.className="ci"+(c.id===activeId?" active":"");
     div.onclick=()=>openChat(c.id);
-    const prev=last?(last.deleted_all?"🚫 Supprimé":last.from==="me"?"Vous : "+last.text:last.text):"";
-    div.innerHTML=`<div class="av" style="background:${c.color}">${c.ini}${c.status==="En ligne"?'<div class="dot"></div>':''}</div><div class="cm"><div class="cn">${c.name}</div><div class="cp">${prev}</div></div><div class="ci-right"><div class="ct">${last?last.time:""}</div>${c.unread?`<div class="bdg">${c.unread}</div>`:""}</div>`;
+    const prev=last?(last.deleted_all?"🚫 Supprimé":last.from==="me"?"Vous : "+last.text:last.text):"Démarrer la conversation";
+    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : c.ini;
+    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.status==="En ligne"?'<div class="dot"></div>':''}</div><div class="cm"><div class="cn">${c.name}</div><div class="cp">${prev}</div></div><div class="ci-right"><div class="ct">${last?last.time:""}</div>${c.unread?`<div class="bdg">${c.unread}</div>`:""}</div>`;
     list.appendChild(div);
   });
 }
 function filterChats(v){renderChats(v);}
 
+function getChatId(otherEmail){
+  const me=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const other=otherEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  return [me,other].sort().join("_");
+}
+
 function openChat(id){
   activeId=id;
   const c=contacts.find(x=>x.id===id);
   if(!c)return;
+  if(!c.msgs) c.msgs=[];
   c.unread=0;
   renderChats(document.getElementById("search-inp").value);
   document.getElementById("hname").textContent=c.name;
   document.getElementById("hstatus").textContent=c.status;
   const hav=document.getElementById("hav");
   hav.style.background=c.color;
-  hav.innerHTML=c.ini+(c.status==="En ligne"?'<div class="dot"></div>':"");
+  const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : c.ini;
+  hav.innerHTML=avContent+(c.status==="En ligne"?'<div class="dot"></div>':"");
   document.getElementById("empty").style.display="none";
   document.getElementById("chat-view").style.display="flex";
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
   renderMsgs(c);
   document.getElementById("msg-input").focus();
+
+  // Listen to Firebase messages for this chat
+  if(window._firebaseReady){
+    const chatId=getChatId(c.name);
+    const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+    window._onValue(r,snap=>{
+      const msgs=[];
+      snap.forEach(child=>{
+        const v=child.val();
+        msgs.push({
+          id:child.key,
+          from: v.sender===myEmail ? "me" : "them",
+          text:v.text, type:v.type, data:v.data,
+          time:v.time, read:v.read,
+          del_all:v.del_all, del_me:v.del_me
+        });
+      });
+      c.msgs=msgs;
+      if(activeId===id){renderMsgs(c);renderChats(document.getElementById("search-inp").value);}
+    });
+  }
 }
 function goBack(){
   document.getElementById("sidebar").classList.remove("hidden");
@@ -750,10 +838,16 @@ function sendMsg(){
   const text=inp.value.trim();
   if(!text||!activeId)return;
   const c=contacts.find(x=>x.id===activeId);
-  c.msgs.push({id:Date.now(),from:"me",text,time:getTime(),read:false});
   inp.value="";inp.style.height="auto";
-  renderMsgs(c);renderChats(document.getElementById("search-inp").value);
-  if(window._firebaseReady){const r=window._ref(window._db,"chats/"+activeId+"/msgs");window._push(r,{sender:myEmail||"demo",text,type:"text",time:getTime(),ts:Date.now(),read:false});}
+  if(window._firebaseReady){
+    const chatId=getChatId(c.name);
+    const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+    window._push(r,{sender:myEmail,text,type:"text",time:getTime(),ts:Date.now(),read:false});
+  }else{
+    // Fallback local-only if Firebase unavailable
+    c.msgs.push({id:Date.now(),from:"me",text,time:getTime(),read:false});
+    renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+  }
 }
 function sendFile(input){
   if(!input.files||!input.files[0]||!activeId)return;
@@ -763,8 +857,15 @@ function sendFile(input){
   const reader=new FileReader();
   reader.onload=e=>{
     const c=contacts.find(x=>x.id===activeId);
-    c.msgs.push({id:Date.now(),from:"me",type:isImg?"image":"video",data:e.target.result,text:isImg?"📷":"🎥",time:getTime(),read:false});
-    renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+    const msg={sender:myEmail,type:isImg?"image":"video",data:e.target.result,text:isImg?"📷":"🎥",time:getTime(),read:false};
+    if(window._firebaseReady){
+      const chatId=getChatId(c.name);
+      const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+      window._push(r,msg);
+    }else{
+      c.msgs.push({id:Date.now(),from:"me",...msg});
+      renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+    }
     showToast(isImg?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
   };
   reader.readAsDataURL(file);input.value="";
@@ -797,12 +898,20 @@ function doDelMe(){
   if(m)m.del_me=true;
   renderMsgs(c);document.getElementById("del-modal").classList.remove("show");
   showToast("🙈 "+t("dlme"));
+  // Note: "delete for me" is stored locally only (not synced)
 }
 function doDelAll(){
   const {cId,mId}=delPending;
   const c=contacts.find(x=>x.id===cId);
   const m=c.msgs.find(x=>x.id===mId);
-  if(m){m.del_all=true;m.text="🚫 Ce message a été supprimé";}
+  if(m){
+    m.del_all=true;m.text="🚫 Ce message a été supprimé";
+    if(window._firebaseReady){
+      const chatId=getChatId(c.name);
+      const r=window._ref(window._db,"chats/"+chatId+"/msgs/"+mId);
+      window._update(r,{del_all:true,text:"🚫 Ce message a été supprimé",type:"text",data:null});
+    }
+  }
   renderMsgs(c);renderChats(document.getElementById("search-inp").value);
   document.getElementById("del-modal").classList.remove("show");
   showToast("🗑️ "+t("dlall"));
@@ -861,8 +970,15 @@ function sendRec(){
     const reader=new FileReader();
     reader.onload=ev=>{
       const c=contacts.find(x=>x.id===activeId);
-      c.msgs.push({id:Date.now(),from:"me",type:"audio",data:ev.target.result,text:"🎤",time:getTime(),read:false});
-      renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+      const msg={sender:myEmail,type:"audio",data:ev.target.result,text:"🎤",time:getTime(),read:false};
+      if(window._firebaseReady){
+        const chatId=getChatId(c.name);
+        const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+        window._push(r,msg);
+      }else{
+        c.msgs.push({id:Date.now(),from:"me",...msg});
+        renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+      }
       showToast("🎤 Vocal envoyé !");
     };
     reader.readAsDataURL(blob);
@@ -1037,6 +1153,7 @@ function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g
 window.addEventListener("resize",()=>{if(activeId)scrollBot();});
 
 // ══ INIT ════════════════════════════════════════════════════════════════
+loadContactsLocal();
 buildEmoji();
 renderChats();
 renderContacts();
