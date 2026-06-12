@@ -5,952 +5,1037 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <title>Bermax</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
-
-<!-- Firebase SDK -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue, set, update, remove }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, signInWithPhoneNumber, RecaptchaVerifier }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDL6LcD3SZcX-AwfvSPuUZxE2PRHV9BUx8",
-    authDomain: "bermax-3ffcc.firebaseapp.com",
-    databaseURL: "https://bermax-3ffcc-default-rtdb.firebaseio.com",
-    projectId: "bermax-3ffcc",
-    storageBucket: "bermax-3ffcc.firebasestorage.app",
-    messagingSenderId: "922714485366",
-    appId: "1:922714485366:web:7449ef7c27b1e8dc542557"
+  import { getDatabase, ref, push, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  const cfg = {
+    apiKey:"AIzaSyDL6LcD3SZcX-AwfvSPuUZxE2PRHV9BUx8",
+    authDomain:"bermax-3ffcc.firebaseapp.com",
+    databaseURL:"https://bermax-3ffcc-default-rtdb.firebaseio.com",
+    projectId:"bermax-3ffcc",
+    storageBucket:"bermax-3ffcc.firebasestorage.app",
+    messagingSenderId:"922714485366",
+    appId:"1:922714485366:web:7449ef7c27b1e8dc542557"
   };
-
-  const app  = initializeApp(firebaseConfig);
-  const db   = getDatabase(app);
-  const auth = getAuth(app);
-
-  // Expose to global scope
-  window._db               = db;
-  window._auth             = auth;
-  window._ref              = ref;
-  window._push             = push;
-  window._set              = set;
-  window._update           = update;
-  window._remove           = remove;
-  window._onValue          = onValue;
-  window._RecaptchaVerifier    = RecaptchaVerifier;
-  window._signInWithPhoneNumber = signInWithPhoneNumber;
-  window._firebaseReady    = true;
+  const app=initializeApp(cfg), db=getDatabase(app);
+  window._db=db;window._ref=ref;window._push=push;window._set=set;
+  window._update=update;window._onValue=onValue;
+  window._firebaseReady=true;
   window.dispatchEvent(new Event("firebaseReady"));
 </script>
-
 <style>
-  :root{
-    --bg:#0d1117;--sidebar-bg:#111820;--chat-bg:#0a0f14;
-    --bubble-me:#1a6b3c;--bubble-them:#1c2a38;
-    --accent:#25d366;--accent2:#128c7e;
-    --text:#e8edf2;--text-muted:#7a8fa6;
-    --border:#1e2d3d;--header:#141f2b;
-    --input-bg:#1c2a38;--hover:#1a2535;
-    --online:#25d366;--font:'Nunito',sans-serif;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:var(--font);background:var(--bg);color:var(--text);height:100dvh;display:flex;overflow:hidden;}
+:root{
+  --bg:#0d1117;--side:#111820;--chat:#0a0f14;
+  --bme:#1a6b3c;--bthem:#1c2a38;
+  --ac:#25d366;--ac2:#128c7e;
+  --tx:#e8edf2;--muted:#7a8fa6;
+  --br:#1e2d3d;--hd:#141f2b;
+  --inp:#1c2a38;--hov:#1a2535;
+  --F:'Nunito',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;display:flex;overflow:hidden;}
 
-  /* SIDEBAR */
-  #sidebar{width:340px;min-width:280px;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s ease;}
-  .sidebar-header{background:var(--header);padding:16px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);}
-  .my-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden;}
-  .sidebar-header h1{font-size:20px;font-weight:800;flex:1;background:linear-gradient(90deg,var(--accent),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-  .icon-btn{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:6px;border-radius:50%;transition:background .2s,color .2s;}
-  .icon-btn:hover{background:var(--hover);color:var(--accent);}
-  .search-wrap{padding:10px 16px;background:var(--sidebar-bg);border-bottom:1px solid var(--border);position:relative;}
-  .search-wrap input{width:100%;padding:10px 16px 10px 40px;background:var(--input-bg);border:1px solid var(--border);border-radius:25px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border .2s;}
-  .search-wrap input:focus{border-color:var(--accent);}
-  .search-wrap::before{content:'🔍';position:absolute;left:28px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
-  #chat-list{flex:1;overflow-y:auto;}
-  #chat-list::-webkit-scrollbar{width:4px;}
-  #chat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-  .chat-item{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .2s;}
-  .chat-item:hover,.chat-item.active{background:var(--hover);}
-  .chat-item.active{border-left:3px solid var(--accent);}
-  .avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0;position:relative;color:#fff;overflow:hidden;}
-  .avatar .dot{width:13px;height:13px;background:var(--online);border-radius:50%;border:2px solid var(--sidebar-bg);position:absolute;bottom:1px;right:1px;}
-  .chat-meta{flex:1;min-width:0;}
-  .chat-name{font-weight:700;font-size:15px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .chat-preview{font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .chat-info{text-align:right;flex-shrink:0;}
-  .chat-time{font-size:11px;color:var(--text-muted);margin-bottom:5px;}
-  .badge{background:var(--accent);color:#000;font-size:11px;font-weight:800;border-radius:10px;padding:2px 7px;display:inline-block;min-width:20px;text-align:center;}
+/* ═══ SIDEBAR ═══ */
+#sidebar{width:340px;min-width:280px;background:var(--side);border-right:1px solid var(--br);display:flex;flex-direction:column;transition:transform .3s;}
 
-  /* MAIN */
-  #main{flex:1;display:flex;flex-direction:column;background:var(--chat-bg);min-height:0;overflow:hidden;}
-  .chat-header{background:var(--header);padding:12px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);box-shadow:0 2px 10px rgba(0,0,0,.3);flex-shrink:0;}
-  #back-btn{display:none;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:4px 10px 4px 0;}
-  .chat-header .avatar{width:42px;height:42px;font-size:16px;}
-  .chat-header-info h2{font-size:16px;font-weight:700;}
-  .chat-header-info span{font-size:12px;color:var(--accent);}
-  .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center;}
-  .call-btn{background:var(--accent2);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;box-shadow:0 2px 10px rgba(18,140,126,.4);}
-  .call-btn:hover{background:var(--accent);transform:scale(1.1);}
-  .video-btn{background:#1a4a8a;border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;box-shadow:0 2px 10px rgba(26,74,138,.4);}
-  .video-btn:hover{background:#2563eb;transform:scale(1.1);}
-  .mute-btn{background:#4a1a4a;border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;box-shadow:0 2px 10px rgba(139,0,139,.3);}
-  .mute-btn:hover{background:#7b2d8b;transform:scale(1.1);}
-  .mute-btn.muted{background:#4d1a1a;}
+/* TOP BAR (langue) */
+#top-bar{background:var(--bg);padding:5px 14px;display:flex;justify-content:flex-end;align-items:center;border-bottom:1px solid var(--br);flex-shrink:0;}
+#lang-btn{background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:10px;color:var(--tx);transition:background .15s;line-height:1;}
+#lang-btn:hover{background:var(--hov);}
 
-  /* MESSAGES */
-  #messages{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:6px;background:var(--chat-bg);min-height:0;}
-  #messages::-webkit-scrollbar{width:4px;}
-  #messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
-  .day-label{text-align:center;font-size:12px;color:var(--text-muted);background:var(--header);border-radius:12px;padding:4px 14px;margin:10px auto;width:fit-content;}
-  .msg{display:flex;flex-direction:column;max-width:72%;animation:fadeUp .25s ease;position:relative;}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-  .msg.me{align-self:flex-end;align-items:flex-end;}
-  .msg.them{align-self:flex-start;align-items:flex-start;}
-  .bubble{padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.5;word-break:break-word;}
-  .msg.me .bubble{background:var(--bubble-me);border-bottom-right-radius:5px;}
-  .msg.them .bubble{background:var(--bubble-them);border-bottom-left-radius:5px;}
-  .msg-time{font-size:11px;color:var(--text-muted);margin-top:3px;padding:0 4px;display:flex;align-items:center;gap:4px;}
-  .msg.me .msg-time{justify-content:flex-end;}
-  .tick{font-size:13px;}
-  .tick.read{color:#53bdeb;}
-  .bubble img{max-width:220px;max-height:220px;border-radius:12px;display:block;cursor:pointer;transition:opacity .2s;}
-  .bubble img:hover{opacity:.88;}
-  .bubble video{max-width:220px;border-radius:12px;display:block;}
-  .audio-bubble audio{width:200px;height:36px;border-radius:20px;outline:none;}
-  .deleted-msg{font-style:italic;color:var(--text-muted);font-size:13px;}
-  .msg-del-btn{background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:8px;opacity:0;transition:opacity .2s;}
-  .msg:hover .msg-del-btn{opacity:1;}
+/* HEADER (Bermax) */
+.s-header{background:var(--hd);padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--br);flex-shrink:0;}
+.my-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden;}
+.s-header h1{font-size:20px;font-weight:800;flex:1;background:linear-gradient(90deg,var(--ac),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.ic{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:5px;border-radius:50%;transition:background .2s,color .2s;}
+.ic:hover{background:var(--hov);color:var(--ac);}
 
-  /* TYPING */
-  .typing-indicator{display:flex;align-items:center;gap:5px;padding:8px 14px;}
-  .typing-indicator span{width:8px;height:8px;background:var(--text-muted);border-radius:50%;animation:bounce 1.2s infinite;}
-  .typing-indicator span:nth-child(2){animation-delay:.2s;}
-  .typing-indicator span:nth-child(3){animation-delay:.4s;}
-  @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+/* SEARCH */
+.srch{padding:8px 12px;background:var(--side);border-bottom:1px solid var(--br);position:relative;flex-shrink:0;}
+.srch input{width:100%;padding:8px 12px 8px 34px;background:var(--inp);border:1px solid var(--br);border-radius:25px;color:var(--tx);font-family:var(--F);font-size:13px;outline:none;transition:border .2s;}
+.srch input:focus{border-color:var(--ac);}
+.srch::before{content:'🔍';position:absolute;left:22px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;}
 
-  /* INPUT BAR */
-  .input-bar{background:var(--header);padding:8px 8px;display:flex;align-items:center;gap:6px;border-top:2px solid var(--border);position:sticky;bottom:0;z-index:50;flex-shrink:0;}
-  .attach-btn,.emoji-btn{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;border-radius:50%;transition:background .2s,color .2s;flex-shrink:0;}
-  .attach-btn:hover,.emoji-btn:hover{background:var(--hover);color:var(--accent);}
-  #msg-input{flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:25px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 14px;outline:none;resize:none;max-height:120px;overflow-y:auto;transition:border .2s;line-height:1.4;min-width:0;}
-  #msg-input:focus{border-color:var(--accent);}
-  #msg-input::placeholder{color:var(--text-muted);}
-  #send-btn{width:42px;height:42px;background:var(--accent);border:none;border-radius:50%;color:#000;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,transform .15s;box-shadow:0 2px 12px rgba(37,211,102,.3);}
-  #send-btn:hover{background:#1db954;transform:scale(1.08);}
-  #mic-btn{width:42px;height:42px;background:linear-gradient(135deg,#1a4a8a,#2563eb);border:none;border-radius:50%;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,transform .15s;box-shadow:0 4px 18px rgba(37,99,235,.5);position:relative;}
-  #mic-btn::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid rgba(83,168,255,.4);}
-  #mic-btn:hover{transform:scale(1.1);}
-  #mic-btn.recording{background:linear-gradient(135deg,#7f1d1d,#dc2626);box-shadow:0 4px 18px rgba(220,38,38,.5);animation:pulse-mic 1s infinite;}
-  @keyframes pulse-mic{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}
+/* CHAT LIST */
+#chat-list{flex:1;overflow-y:auto;}
+#chat-list::-webkit-scrollbar{width:4px;}
+#chat-list::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px;}
+.ci{display:flex;align-items:center;gap:11px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--br);transition:background .2s;}
+.ci:hover,.ci.active{background:var(--hov);}
+.ci.active{border-left:3px solid var(--ac);}
+.av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;position:relative;color:#fff;overflow:hidden;}
+.av .dot{width:12px;height:12px;background:var(--ac);border-radius:50%;border:2px solid var(--side);position:absolute;bottom:1px;right:1px;}
+.cm{flex:1;min-width:0;}
+.cn{font-weight:700;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cp{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-right{text-align:right;flex-shrink:0;}
+.ct{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.bdg{background:var(--ac);color:#000;font-size:11px;font-weight:800;border-radius:10px;padding:2px 6px;display:inline-block;}
 
-  /* VOICE BAR */
-  #voice-bar{display:none;background:linear-gradient(180deg,#0d1f14,#0a1a10);border-top:3px solid var(--accent);border-radius:16px 16px 0 0;padding:12px 14px 10px;flex-direction:column;gap:8px;box-shadow:0 -4px 20px rgba(37,211,102,.2);flex-shrink:0;z-index:50;}
-  #voice-bar.show{display:flex;}
-  .voice-timer{font-size:22px;font-weight:800;color:#ff6b6b;letter-spacing:2px;}
-  .voice-wave{display:flex;align-items:center;justify-content:center;gap:3px;height:26px;flex:1;}
-  .voice-wave span{width:4px;background:#ff6b6b;border-radius:4px;animation:wave 0.8s infinite ease-in-out;}
-  .voice-wave span:nth-child(1){height:10px;} .voice-wave span:nth-child(2){height:20px;animation-delay:.1s;}
-  .voice-wave span:nth-child(3){height:26px;animation-delay:.2s;} .voice-wave span:nth-child(4){height:20px;animation-delay:.3s;}
-  .voice-wave span:nth-child(5){height:10px;animation-delay:.4s;} .voice-wave span:nth-child(6){height:22px;animation-delay:.5s;}
-  .voice-wave span:nth-child(7){height:14px;animation-delay:.6s;}
-  @keyframes wave{0%,100%{transform:scaleY(1);}50%{transform:scaleY(1.8);}}
-  .voice-wave.paused span{animation-play-state:paused;opacity:.4;}
-  .voice-actions{display:flex;gap:16px;justify-content:center;}
-  .voice-action-btn{width:54px;height:54px;border:none;border-radius:50%;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .15s;box-shadow:0 3px 10px rgba(0,0,0,.3);flex-shrink:0;}
-  .voice-action-btn:active{transform:scale(.90);}
-  .va-cancel{background:linear-gradient(135deg,#4d1a1a,#7f1d1d);color:#ff6b6b;}
-  .va-pause{background:linear-gradient(135deg,#1a2f4d,#1e3a5f);color:#53a8ff;}
-  .va-send{background:linear-gradient(135deg,#1a4d2e,#166534);color:var(--accent);}
+/* CONTACTS PANEL */
+#contacts-panel{flex:1;display:none;flex-direction:column;overflow:hidden;}
+#contacts-panel.show{display:flex;}
+#contacts-list{flex:1;overflow-y:auto;}
+#contacts-list::-webkit-scrollbar{width:4px;}
+#contacts-list::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px;}
+.cletter{font-size:11px;font-weight:800;color:var(--ac);text-transform:uppercase;letter-spacing:1px;padding:9px 14px 3px;}
+.citem{display:flex;align-items:center;gap:11px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--br);transition:background .2s;}
+.citem:hover{background:var(--hov);}
+.cname{font-weight:700;font-size:14px;}
+.cphone{font-size:11px;color:var(--muted);}
+.cmsg-btn{background:var(--ac);border:none;border-radius:50%;width:32px;height:32px;color:#000;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
-  /* EMOJI */
-  #emoji-picker{position:absolute;bottom:80px;left:16px;background:var(--sidebar-bg);border:1px solid var(--border);border-radius:16px;padding:12px;display:none;flex-wrap:wrap;gap:6px;max-width:300px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:100;}
-  #emoji-picker.show{display:flex;}
-  .emoji-btn-pick{background:none;border:none;font-size:22px;cursor:pointer;border-radius:8px;padding:4px;transition:background .15s;}
-  .emoji-btn-pick:hover{background:var(--hover);}
+/* BOTTOM NAV */
+#bnav{display:flex;background:var(--hd);border-top:1px solid var(--br);flex-shrink:0;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);font-family:var(--F);font-size:11px;font-weight:700;cursor:pointer;padding:7px 5px;transition:color .2s;}
+.nb.active{color:var(--ac);}
+.nb .ni{font-size:20px;}
 
-  /* EMPTY STATE */
-  #empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text-muted);}
-  #empty-state .big-icon{font-size:72px;opacity:.3;}
-  #empty-state h3{font-size:22px;font-weight:700;color:var(--text);}
-  #empty-state p{font-size:14px;max-width:280px;text-align:center;line-height:1.6;}
+/* ═══ MAIN ═══ */
+#main{flex:1;display:flex;flex-direction:column;background:var(--chat);min-height:0;overflow:hidden;}
+.c-header{background:var(--hd);padding:10px 14px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.3);flex-shrink:0;}
+#back-btn{display:none;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:3px 8px 3px 0;}
+.c-header .av{width:38px;height:38px;font-size:14px;}
+.c-header-info h2{font-size:15px;font-weight:700;}
+.c-header-info span{font-size:11px;color:var(--ac);}
+.hact{margin-left:auto;display:flex;gap:7px;align-items:center;}
+.call-btn{background:var(--ac2);border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(18,140,126,.4);}
+.call-btn:hover{background:var(--ac);}
+.vid-btn{background:#1a4a8a;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,74,138,.4);}
+.vid-btn:hover{background:#2563eb;}
+.mute-btn{background:#4a1a4a;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.mute-btn.muted{background:#4d1a1a;}
 
-  /* RESPONSIVE */
-  @media(max-width:640px){
-    #sidebar{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;}
-    #sidebar.hidden{transform:translateX(-100%);}
-    #main{width:100%;}
-    #back-btn{display:block;}
-  }
+/* MESSAGES */
+#messages{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:5px;min-height:0;}
+#messages::-webkit-scrollbar{width:4px;}
+#messages::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px;}
+.dlabel{text-align:center;font-size:11px;color:var(--muted);background:var(--hd);border-radius:12px;padding:3px 12px;margin:6px auto;width:fit-content;}
+.msg{display:flex;flex-direction:column;max-width:72%;animation:fup .2s ease;position:relative;}
+@keyframes fup{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+.msg.me{align-self:flex-end;align-items:flex-end;}
+.msg.them{align-self:flex-start;align-items:flex-start;}
+.bbl{padding:8px 12px;border-radius:17px;font-size:14px;line-height:1.5;word-break:break-word;}
+.msg.me .bbl{background:var(--bme);border-bottom-right-radius:4px;}
+.msg.them .bbl{background:var(--bthem);border-bottom-left-radius:4px;}
+.mt{font-size:11px;color:var(--muted);margin-top:2px;padding:0 3px;display:flex;align-items:center;gap:3px;}
+.msg.me .mt{justify-content:flex-end;}
+.tick{font-size:12px;}
+.tick.read{color:#53bdeb;}
+.bbl img{max-width:200px;max-height:200px;border-radius:11px;display:block;cursor:pointer;}
+.bbl video{max-width:200px;border-radius:11px;display:block;}
+.bbl audio{width:180px;height:32px;border-radius:18px;outline:none;}
+.del-msg{font-style:italic;color:var(--muted);font-size:13px;}
+.dbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;border-radius:7px;opacity:0;transition:opacity .2s;}
+.msg:hover .dbtn{opacity:1;}
 
-  /* LOGIN */
-  #login-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
-  #login-screen.hidden{display:none;}
-  .login-box{width:100%;max-width:400px;background:var(--sidebar-bg);border-radius:24px;padding:36px 28px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;gap:20px;}
-  .login-logo{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 8px 30px rgba(37,211,102,.3);}
-  .login-box h2{font-size:26px;font-weight:800;background:linear-gradient(90deg,var(--accent),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;}
-  .login-box>p{font-size:14px;color:var(--text-muted);text-align:center;line-height:1.6;margin-top:-8px;}
-  .login-field{width:100%;display:flex;flex-direction:column;gap:6px;}
-  .login-field label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
-  .login-field input{width:100%;padding:14px 18px;background:var(--input-bg);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:var(--font);font-size:15px;outline:none;transition:border .2s;}
-  .login-field input:focus{border-color:var(--accent);}
-  .login-field input::placeholder{color:var(--text-muted);}
-  .login-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;color:#000;font-family:var(--font);font-size:16px;font-weight:800;cursor:pointer;transition:opacity .2s,transform .15s;box-shadow:0 4px 20px rgba(37,211,102,.3);}
-  .login-btn:hover{opacity:.9;}
-  .login-btn:active{transform:scale(.97);}
-  .login-btn-secondary{width:100%;padding:14px;background:var(--input-bg);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;}
-  .login-btn-secondary:hover{background:var(--hover);}
-  .login-error{font-size:13px;color:#ff6b6b;text-align:center;display:none;padding:10px 14px;background:#4d1a1a;border-radius:10px;width:100%;}
-  .login-error.show{display:block;}
-  .avatar-upload-wrap{position:relative;width:90px;height:90px;cursor:pointer;}
-  .avatar-upload-wrap img{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);}
-  .avatar-upload-wrap .av-placeholder{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:36px;border:3px solid var(--accent);}
-  .avatar-upload-wrap .av-edit{position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--sidebar-bg);}
+/* TYPING */
+.typin{display:flex;align-items:center;gap:4px;padding:7px 12px;}
+.typin span{width:7px;height:7px;background:var(--muted);border-radius:50%;animation:bnc 1.2s infinite;}
+.typin span:nth-child(2){animation-delay:.2s;}
+.typin span:nth-child(3){animation-delay:.4s;}
+@keyframes bnc{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
 
-  /* CODE CONFIRMATION */
-  #confirm-panel{width:100%;display:none;flex-direction:column;gap:16px;align-items:center;}
-  #confirm-panel.show{display:flex;}
-  .confirm-title{font-size:18px;font-weight:800;color:var(--text);text-align:center;}
-  .confirm-subtitle{font-size:13px;color:var(--text-muted);text-align:center;line-height:1.6;}
-  .confirm-subtitle b{color:var(--accent);}
-  .code-display{background:linear-gradient(135deg,#1a4d2e,#0d2e1a);border:2px solid var(--accent);border-radius:16px;padding:16px 24px;text-align:center;width:100%;}
-  .code-display .code-label{font-size:12px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-  .code-display .code-value{font-size:38px;font-weight:800;letter-spacing:10px;color:#fff;}
-  .code-expires{font-size:12px;color:var(--text-muted);text-align:center;}
-  .code-expires b{color:#ffaa00;}
-  .code-inputs{display:flex;gap:10px;justify-content:center;width:100%;}
-  .code-input{width:48px;height:56px;background:var(--input-bg);border:2px solid var(--border);border-radius:14px;color:var(--text);font-family:var(--font);font-size:24px;font-weight:800;text-align:center;outline:none;transition:border .2s;}
-  .code-input:focus{border-color:var(--accent);}
-  .code-input.filled{border-color:var(--accent);background:#1a4d2e;}
-  .code-input.error{border-color:#ff6b6b;background:#4d1a1a;animation:shake .3s;}
-  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
-  .resend-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--text-muted);}
-  .resend-btn{background:none;border:none;color:var(--accent);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:8px;}
-  .resend-btn:disabled{color:var(--text-muted);cursor:not-allowed;}
+/* INPUT BAR */
+.ibar{background:var(--hd);padding:6px 8px;display:flex;align-items:center;gap:6px;border-top:2px solid var(--br);flex-shrink:0;}
+.att-btn,.emj-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:3px;border-radius:50%;transition:background .2s;flex-shrink:0;}
+.att-btn:hover,.emj-btn:hover{background:var(--hov);color:var(--ac);}
+#msg-input{flex:1;background:var(--inp);border:1px solid var(--br);border-radius:25px;color:var(--tx);font-family:var(--F);font-size:13px;padding:9px 13px;outline:none;resize:none;max-height:110px;overflow-y:auto;transition:border .2s;line-height:1.4;min-width:0;}
+#msg-input:focus{border-color:var(--ac);}
+#msg-input::placeholder{color:var(--muted);}
+#send-btn{width:38px;height:38px;background:var(--ac);border:none;border-radius:50%;color:#000;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 9px rgba(37,211,102,.3);transition:background .2s,transform .15s;}
+#send-btn:hover{background:#1db954;transform:scale(1.07);}
+#mic-btn{width:38px;height:38px;background:linear-gradient(135deg,#1a4a8a,#2563eb);border:none;border-radius:50%;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 10px rgba(37,99,235,.4);}
+#mic-btn.recording{background:linear-gradient(135deg,#7f1d1d,#dc2626);animation:pmic 1s infinite;}
+@keyframes pmic{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
 
-  /* DELETE MODAL */
-  #delete-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:3000;align-items:flex-end;justify-content:center;}
-  #delete-modal.show{display:flex;}
-  .delete-sheet{width:100%;max-width:480px;background:#1c2a38;border-radius:24px 24px 0 0;padding:16px 16px 32px;display:flex;flex-direction:column;gap:10px;animation:slideUp .25s ease;}
-  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
-  .delete-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 8px;}
-  .delete-title{font-size:13px;color:var(--text-muted);text-align:center;padding-bottom:8px;border-bottom:1px solid var(--border);}
-  .delete-item{background:none;border:none;color:var(--text);font-family:var(--font);font-size:16px;font-weight:700;padding:16px 20px;border-radius:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;transition:background .15s;width:100%;}
-  .delete-item:hover,.delete-item:active{background:var(--hover);}
-  .delete-item.danger{color:#ff6b6b;}
-  .delete-item .di-icon{font-size:22px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
-  .delete-item.danger .di-icon{background:#4d1a1a;}
-  .delete-item.safe .di-icon{background:#1a2f4d;}
-  .delete-cancel{background:var(--input-bg);border:none;color:var(--text-muted);font-family:var(--font);font-size:15px;font-weight:700;padding:16px;border-radius:14px;cursor:pointer;width:100%;margin-top:4px;}
+/* VOICE BAR */
+#vbar{display:none;background:linear-gradient(180deg,#0d1f14,#0a1a10);border-top:3px solid var(--ac);border-radius:15px 15px 0 0;padding:9px 12px;flex-direction:column;gap:7px;flex-shrink:0;}
+#vbar.show{display:flex;}
+.vtimer{font-size:19px;font-weight:800;color:#ff6b6b;letter-spacing:2px;}
+.vwave{display:flex;align-items:center;gap:3px;height:22px;flex:1;}
+.vwave span{width:3px;background:#ff6b6b;border-radius:4px;animation:wv .8s infinite ease-in-out;}
+.vwave span:nth-child(1){height:9px;}.vwave span:nth-child(2){height:17px;animation-delay:.1s;}
+.vwave span:nth-child(3){height:22px;animation-delay:.2s;}.vwave span:nth-child(4){height:17px;animation-delay:.3s;}
+.vwave span:nth-child(5){height:9px;animation-delay:.4s;}.vwave span:nth-child(6){height:18px;animation-delay:.5s;}
+.vwave span:nth-child(7){height:12px;animation-delay:.6s;}
+@keyframes wv{0%,100%{transform:scaleY(1);}50%{transform:scaleY(1.8);}}
+.vwave.paused span{animation-play-state:paused;opacity:.4;}
+.vact{display:flex;gap:13px;justify-content:center;}
+.vbtn{width:46px;height:46px;border:none;border-radius:50%;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+.vbtn:active{transform:scale(.9);}
+.vcancel{background:linear-gradient(135deg,#4d1a1a,#7f1d1d);}
+.vpause{background:linear-gradient(135deg,#1a2f4d,#1e3a5f);}
+.vsend{background:linear-gradient(135deg,#1a4d2e,#166534);}
 
-  /* FIREBASE STATUS */
-  #fb-status{position:fixed;top:10px;right:10px;background:#1a4d2e;color:var(--accent);font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;z-index:9998;display:none;}
-  #fb-status.show{display:block;}
+/* EMOJI PICKER */
+#emoji-picker{position:absolute;bottom:66px;left:10px;background:var(--side);border:1px solid var(--br);border-radius:15px;padding:9px;display:none;flex-wrap:wrap;gap:5px;max-width:280px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:100;}
+#emoji-picker.show{display:flex;}
+.ep{background:none;border:none;font-size:20px;cursor:pointer;border-radius:7px;padding:3px;transition:background .15s;}
+.ep:hover{background:var(--hov);}
 
-  /* TOAST */
-  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--accent);color:#000;font-weight:700;padding:10px 24px;border-radius:25px;font-size:14px;opacity:0;transition:all .3s;z-index:9999;}
-  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  @keyframes blink-dot{0%,100%{opacity:1;}50%{opacity:.2;}}
+/* EMPTY STATE */
+#empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;color:var(--muted);}
+#empty .eico{font-size:62px;opacity:.3;}
+#empty h3{font-size:19px;font-weight:700;color:var(--tx);}
+#empty p{font-size:13px;max-width:250px;text-align:center;line-height:1.6;}
+
+/* ═══ MODALS ═══ */
+@keyframes sup{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.backdrop{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.65);z-index:3000;align-items:flex-end;justify-content:center;}
+.backdrop.show{display:flex;}
+.sheet{width:100%;max-width:480px;background:var(--side);border-radius:22px 22px 0 0;padding:15px 15px 30px;display:flex;flex-direction:column;gap:10px;animation:sup .25s ease;}
+.shandle{width:38px;height:4px;background:var(--br);border-radius:4px;margin:0 auto 5px;}
+.stitle{font-size:16px;font-weight:800;text-align:center;}
+
+/* DELETE */
+.del-item{background:none;border:none;color:var(--tx);font-family:var(--F);font-size:15px;font-weight:700;padding:13px 16px;border-radius:13px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:11px;transition:background .15s;width:100%;}
+.del-item:hover{background:var(--hov);}
+.del-item.danger{color:#ff6b6b;}
+.dico{font-size:19px;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.del-item.danger .dico{background:#4d1a1a;}
+.del-item.safe .dico{background:#1a2f4d;}
+.del-cancel{background:var(--inp);border:none;color:var(--muted);font-family:var(--F);font-size:14px;font-weight:700;padding:13px;border-radius:13px;cursor:pointer;width:100%;margin-top:3px;}
+
+/* ADD CONTACT */
+.sheet input{width:100%;padding:12px 15px;background:var(--inp);border:1px solid var(--br);border-radius:13px;color:var(--tx);font-family:var(--F);font-size:14px;outline:none;transition:border .2s;}
+.sheet input:focus{border-color:var(--ac);}
+
+/* LANGUAGE MODAL */
+#lang-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:6000;align-items:flex-end;justify-content:center;}
+#lang-modal.show{display:flex;}
+.lsheet{width:100%;max-width:480px;background:var(--side);border-radius:22px 22px 0 0;padding:14px 14px 28px;display:flex;flex-direction:column;gap:9px;max-height:88vh;animation:sup .25s ease;}
+.ltitle{font-size:16px;font-weight:800;text-align:center;background:linear-gradient(90deg,var(--ac),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.lsearch{padding:10px 15px;background:var(--inp);border:1px solid var(--br);border-radius:25px;color:var(--tx);font-family:var(--F);font-size:13px;outline:none;transition:border .2s;flex-shrink:0;}
+.lsearch:focus{border-color:var(--ac);}
+#lang-list{overflow-y:auto;display:flex;flex-direction:column;gap:5px;min-height:0;flex:1;}
+#lang-list::-webkit-scrollbar{width:4px;}
+#lang-list::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px;}
+.litem{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:13px;background:var(--inp);border:2px solid transparent;cursor:pointer;transition:background .15s,border .15s;width:100%;text-align:left;}
+.litem:active{transform:scale(.98);}
+.litem.sel{border-color:var(--ac);background:#1a4d2e;}
+.lflag{font-size:24px;flex-shrink:0;}
+.lname{font-size:13px;font-weight:700;color:var(--tx);}
+.lsub{font-size:11px;color:var(--muted);}
+.lcheck{color:var(--ac);font-size:17px;font-weight:800;display:none;margin-left:auto;}
+.litem.sel .lcheck{display:block;}
+
+/* ═══ LOGIN ═══ */
+#login{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:5000;display:flex;align-items:center;justify-content:center;padding:22px;overflow-y:auto;}
+#login.hidden{display:none;}
+.lbox{width:100%;max-width:390px;background:var(--side);border-radius:22px;padding:30px 22px;border:1px solid var(--br);box-shadow:0 18px 55px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;gap:16px;}
+.llogo{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:0 7px 25px rgba(37,211,102,.3);}
+.lbox h2{font-size:23px;font-weight:800;background:linear-gradient(90deg,var(--ac),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;}
+.lbox>p{font-size:13px;color:var(--muted);text-align:center;margin-top:-5px;}
+.lfield{width:100%;display:flex;flex-direction:column;gap:5px;}
+.lfield label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.lfield input{width:100%;padding:12px 15px;background:var(--inp);border:1px solid var(--br);border-radius:13px;color:var(--tx);font-family:var(--F);font-size:15px;outline:none;transition:border .2s;}
+.lfield input:focus{border-color:var(--ac);}
+.lfield input::placeholder{color:var(--muted);}
+.lbtn{width:100%;padding:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));border:none;border-radius:13px;color:#000;font-family:var(--F);font-size:15px;font-weight:800;cursor:pointer;transition:opacity .2s,transform .15s;box-shadow:0 4px 16px rgba(37,211,102,.3);}
+.lbtn:hover{opacity:.9;}
+.lbtn:active{transform:scale(.97);}
+.lbtn2{width:100%;padding:12px;background:var(--inp);border:1px solid var(--br);border-radius:13px;color:var(--tx);font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;transition:background .2s;}
+.lerr{font-size:12px;color:#ff6b6b;text-align:center;display:none;padding:9px 13px;background:#4d1a1a;border-radius:10px;width:100%;}
+.lerr.show{display:block;}
+.av-wrap{position:relative;width:84px;height:84px;cursor:pointer;}
+.av-wrap img{width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid var(--ac);}
+.av-ph{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:32px;border:3px solid var(--ac);}
+.av-ed{position:absolute;bottom:2px;right:2px;width:23px;height:23px;background:var(--ac);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--side);}
+.cbox{background:linear-gradient(135deg,#1a4d2e,#0d2e1a);border:2px solid var(--ac);border-radius:13px;padding:12px 18px;text-align:center;width:100%;}
+.clbl{font-size:11px;color:var(--ac);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.cinps{display:flex;gap:7px;justify-content:center;width:100%;}
+.cinp{width:43px;height:51px;background:var(--inp);border:2px solid var(--br);border-radius:11px;color:var(--tx);font-family:var(--F);font-size:21px;font-weight:800;text-align:center;outline:none;transition:border .2s;}
+.cinp:focus{border-color:var(--ac);}
+.cinp.fil{border-color:var(--ac);background:#1a4d2e;}
+.cinp.err{border-color:#ff6b6b;background:#4d1a1a;animation:shk .3s;}
+@keyframes shk{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+.rrow{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;color:var(--muted);}
+.rbtn{background:none;border:none;color:var(--ac);font-family:var(--F);font-size:12px;font-weight:700;cursor:pointer;padding:3px 7px;border-radius:7px;}
+.rbtn:disabled{color:var(--muted);cursor:not-allowed;}
+#cpanel{width:100%;display:none;flex-direction:column;gap:13px;align-items:center;}
+#cpanel.show{display:flex;}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  #sidebar{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;}
+  #sidebar.hidden{transform:translateX(-100%);}
+  #main{width:100%;}
+  #back-btn{display:block;}
+}
+
+/* TOAST */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ac);color:#000;font-weight:700;padding:9px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+@keyframes bld{0%,100%{opacity:1;}50%{opacity:.2;}}
 </style>
 </head>
 <body>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
-  <div class="sidebar-header">
-    <div class="my-avatar" id="my-avatar-icon" onclick="document.getElementById('change-pic-input').click()" title="Changer ma photo">M</div>
-    <input type="file" id="change-pic-input" accept="image/*" style="display:none" onchange="changeMyPic(this)"/>
+
+  <!-- TOP BAR : icône langue en haut à droite -->
+  <div id="top-bar">
+    <button id="lang-btn" onclick="showLang()" title="Changer la langue">🌐</button>
+  </div>
+
+  <!-- HEADER Bermax -->
+  <div class="s-header">
+    <div class="my-av" id="myav" onclick="document.getElementById('cpic').click()">M</div>
+    <input type="file" id="cpic" accept="image/*" style="display:none" onchange="changeMyPic(this)"/>
     <h1>Bermax</h1>
-    <button class="icon-btn" onclick="showToast('➕ Nouvelle discussion')">✏️</button>
-    <button class="icon-btn" onclick="showToast('⚙️ Paramètres')">⋮</button>
+    <button class="ic" onclick="openAddContact()">➕</button>
+    <button class="ic" onclick="showToast('⚙️ Paramètres')">⋮</button>
   </div>
-  <div class="search-wrap">
-    <input type="text" id="search-input" placeholder="Rechercher une conversation..." oninput="filterChats(this.value)"/>
+
+  <!-- Discussions panel -->
+  <div id="chats-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
+    <div class="srch">
+      <input type="text" id="search-inp" placeholder="Rechercher..." oninput="filterChats(this.value)"/>
+    </div>
+    <div id="chat-list"></div>
   </div>
-  <div id="chat-list"></div>
+
+  <!-- Contacts panel -->
+  <div id="contacts-panel">
+    <div class="srch">
+      <input type="text" id="csearch" placeholder="Rechercher un contact..." oninput="filterContacts(this.value)"/>
+    </div>
+    <div id="contacts-list"></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div id="bnav">
+    <button class="nb active" id="nb-chats" onclick="switchNav('chats')">
+      <span class="ni">💬</span>
+      <span id="lbl-chats">Discussions</span>
+    </button>
+    <button class="nb" id="nb-contacts" onclick="switchNav('contacts')">
+      <span class="ni">👥</span>
+      <span id="lbl-contacts">Contacts</span>
+    </button>
+  </div>
 </div>
 
 <!-- MAIN -->
 <div id="main">
-  <div id="empty-state">
-    <div class="big-icon">💬</div>
+  <div id="empty">
+    <div class="eico">💬</div>
     <h3>Bermax</h3>
-    <p>Sélectionnez une conversation pour commencer à discuter</p>
+    <p id="empty-sub">Sélectionnez une conversation pour commencer</p>
   </div>
 
   <div id="chat-view" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
-    <div class="chat-header">
+    <div class="c-header">
       <button id="back-btn" onclick="goBack()">‹</button>
-      <div class="avatar" id="header-avatar"></div>
-      <div class="chat-header-info">
-        <h2 id="header-name"></h2>
-        <span id="header-status">En ligne</span>
+      <div class="av" id="hav"></div>
+      <div class="c-header-info">
+        <h2 id="hname"></h2>
+        <span id="hstatus">En ligne</span>
       </div>
-      <div class="header-actions">
-        <button class="call-btn" title="Appel vocal" onclick="showToast('📞 Appel vocal en cours...')">📞</button>
-        <button class="video-btn" title="Appel vidéo" onclick="showToast('📹 Appel vidéo en cours...')">📹</button>
-        <button class="mute-btn" title="Muet" onclick="toggleMute(this)">🔔</button>
-        <button class="icon-btn" onclick="showToast('⚙️ Options')">⋮</button>
+      <div class="hact">
+        <button class="call-btn" onclick="showToast('📞 Appel vocal...')">📞</button>
+        <button class="vid-btn" onclick="showToast('📹 Appel vidéo...')">📹</button>
+        <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔔</button>
+        <button class="ic" onclick="showToast('⚙️ Options')">⋮</button>
       </div>
     </div>
 
     <div id="messages"></div>
 
-    <!-- BARRE VOCALE -->
-    <div id="voice-bar">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div id="rec-dot-big" style="width:12px;height:12px;border-radius:50%;background:#ff4444;animation:blink-dot 1s infinite;flex-shrink:0;"></div>
-        <div class="voice-timer" id="voice-timer">0:00</div>
-        <div class="voice-wave" id="voice-wave" style="flex:1;">
-          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <span id="rec-status-txt" style="font-size:12px;color:var(--accent);font-weight:700;white-space:nowrap;">🎙 REC</span>
+    <!-- Voice bar -->
+    <div id="vbar">
+      <div style="display:flex;align-items:center;gap:9px;">
+        <div id="rdot" style="width:10px;height:10px;border-radius:50%;background:#ff4444;animation:bld 1s infinite;flex-shrink:0;"></div>
+        <div class="vtimer" id="vtimer">0:00</div>
+        <div class="vwave" id="vwave" style="flex:1;"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <span id="rstatus" style="font-size:11px;color:var(--ac);font-weight:700;">🎙 REC</span>
       </div>
-      <div class="voice-actions">
-        <button class="voice-action-btn va-cancel" onclick="cancelRecording()">🗑️</button>
-        <button class="voice-action-btn va-pause" id="pause-btn" onclick="togglePause()"><span id="pause-icon">⏸️</span></button>
-        <button class="voice-action-btn va-send" onclick="sendRecording()">📤</button>
+      <div class="vact">
+        <button class="vbtn vcancel" onclick="cancelRec()">🗑️</button>
+        <button class="vbtn vpause" onclick="togglePause()"><span id="picon">⏸️</span></button>
+        <button class="vbtn vsend" onclick="sendRec()">📤</button>
       </div>
     </div>
 
     <div style="position:relative;flex-shrink:0;">
       <div id="emoji-picker"></div>
-      <div class="input-bar">
-        <button class="emoji-btn" onclick="toggleEmoji()">😊</button>
-        <button class="attach-btn" onclick="document.getElementById('file-input').click()">📎</button>
-        <input type="file" id="file-input" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
+      <div class="ibar">
+        <button class="emj-btn" onclick="toggleEmoji()">😊</button>
+        <button class="att-btn" onclick="document.getElementById('finput').click()">📎</button>
+        <input type="file" id="finput" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
         <textarea id="msg-input" rows="1" placeholder="Écrire un message…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button id="send-btn" onclick="sendMessage()">➤</button>
-        <button id="mic-btn" onclick="startRecording()" title="Enregistrer un vocal">🎤</button>
+        <button id="send-btn" onclick="sendMsg()">➤</button>
+        <button id="mic-btn" onclick="startRec()">🎤</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- reCAPTCHA invisible container -->
-<div id="recaptcha-container"></div>
+<!-- LANGUAGE MODAL -->
+<div id="lang-modal" onclick="closeLang(event)">
+  <div class="lsheet">
+    <div class="shandle"></div>
+    <div class="ltitle">🌍 Choisir la langue</div>
+    <input class="lsearch" type="text" id="lsearch" placeholder="🔍 Rechercher..." oninput="filterLangs(this.value)"/>
+    <div id="lang-list"></div>
+  </div>
+</div>
 
-<!-- LOGIN SCREEN -->
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">💬</div>
-    <h2>Bermax</h2>
-    <p>Connectez-vous avec votre numéro de téléphone</p>
-
-    <div id="panel-phone" style="width:100%;display:flex;flex-direction:column;gap:16px;align-items:center;">
-      <div class="login-field" style="align-items:center;">
-        <label>Photo de profil (optionnel)</label>
-        <div class="avatar-upload-wrap" onclick="document.getElementById('profile-pic-input').click()">
-          <div class="av-placeholder" id="av-placeholder">📷</div>
-          <img id="av-preview" style="display:none;"/>
-          <div class="av-edit">✏️</div>
-        </div>
-        <input type="file" id="profile-pic-input" accept="image/*" style="display:none" onchange="previewProfilePic(this)"/>
-        <span style="font-size:12px;color:var(--text-muted);">Appuie pour ajouter une photo</span>
-      </div>
-      <div class="login-field" style="width:100%;">
-        <label>Numéro de téléphone</label>
-        <input type="tel" id="phone-number" placeholder="+33 6 00 00 00 00" style="font-size:18px;text-align:center;letter-spacing:2px;" onkeydown="if(event.key==='Enter') requestCode()"/>
-      </div>
-      <div class="login-error" id="phone-error">Veuillez entrer votre numéro</div>
-      <button class="login-btn" onclick="requestCode()">Recevoir le code →</button>
-    </div>
-
-    <!-- Code confirmation -->
-    <div id="confirm-panel">
-      <div class="confirm-title">🔐 Vérification</div>
-      <div class="confirm-subtitle">Code envoyé au <b id="confirm-dest"></b></div>
-      <div class="code-display" id="sms-notice">
-        <div class="code-label">📩 SMS envoyé</div>
-        <div style="font-size:14px;color:#fff;margin-top:6px;">Vérifiez vos SMS et entrez le code à 6 chiffres reçu de <b>Bermax</b></div>
-      </div>
-      <div class="code-expires">⏱ Valide pendant <b id="countdown-display">60</b>s</div>
-      <div class="login-field" style="align-items:center;">
-        <label>Entrez le code à 6 chiffres</label>
-        <div class="code-inputs">
-          <input class="code-input" id="ci0" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,0)" onkeydown="codeKey(event,0)"/>
-          <input class="code-input" id="ci1" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,1)" onkeydown="codeKey(event,1)"/>
-          <input class="code-input" id="ci2" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,2)" onkeydown="codeKey(event,2)"/>
-          <input class="code-input" id="ci3" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,3)" onkeydown="codeKey(event,3)"/>
-          <input class="code-input" id="ci4" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,4)" onkeydown="codeKey(event,4)"/>
-          <input class="code-input" id="ci5" maxlength="1" type="text" inputmode="numeric" oninput="codeInput(this,5)" onkeydown="codeKey(event,5)"/>
-        </div>
-      </div>
-      <div class="login-error" id="code-error">Code incorrect. Réessayez.</div>
-      <button class="login-btn" onclick="verifyCode()">Vérifier ✓</button>
-      <div class="resend-row">
-        <span>Pas reçu ?</span>
-        <button class="resend-btn" id="resend-btn" onclick="resendCode()" disabled>Renvoyer (<span id="resend-timer">60</span>s)</button>
-      </div>
-      <button class="login-btn-secondary" onclick="backToLogin()">← Retour</button>
-    </div>
+<!-- ADD CONTACT MODAL -->
+<div id="add-modal" class="backdrop" onclick="closeAdd(event)">
+  <div class="sheet">
+    <div class="shandle"></div>
+    <div class="stitle">➕ Nouveau contact</div>
+    <input type="text" id="nc-name" placeholder="Nom du contact" maxlength="30"/>
+    <input type="tel" id="nc-phone" placeholder="Numéro ex: +22961234567"/>
+    <div id="nc-err" class="lerr">Veuillez remplir tous les champs</div>
+    <button class="lbtn" onclick="saveContact()">✅ Ajouter</button>
+    <button class="lbtn2" onclick="closeAdd()">Annuler</button>
   </div>
 </div>
 
 <!-- DELETE MODAL -->
-<div id="delete-modal" onclick="closeDeleteModal(event)">
-  <div class="delete-sheet">
-    <div class="delete-handle"></div>
-    <div class="delete-title">Supprimer le message</div>
-    <button class="delete-item safe" onclick="confirmDeleteForMe()">
-      <span class="di-icon">🙈</span>
-      <div>
-        <div>Supprimer pour moi</div>
-        <div style="font-size:12px;color:var(--text-muted);font-weight:400;margin-top:2px;">Visible uniquement pour vous</div>
-      </div>
+<div id="del-modal" class="backdrop" onclick="closeDel(event)">
+  <div class="sheet">
+    <div class="shandle"></div>
+    <div class="stitle" id="del-title">Supprimer le message</div>
+    <button class="del-item safe" onclick="doDelMe()">
+      <span class="dico">🙈</span>
+      <div><div id="del-me-txt">Supprimer pour moi</div><div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;">Visible uniquement pour vous</div></div>
     </button>
-    <button class="delete-item danger" id="del-for-all-btn" onclick="confirmDeleteForAll()">
-      <span class="di-icon">🗑️</span>
-      <div>
-        <div>Supprimer pour tout le monde</div>
-        <div style="font-size:12px;color:var(--text-muted);font-weight:400;margin-top:2px;">Supprimé pour tous</div>
-      </div>
+    <button class="del-item danger" id="del-all-btn" onclick="doDelAll()">
+      <span class="dico">🗑️</span>
+      <div><div id="del-all-txt">Supprimer pour tout le monde</div><div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;">Supprimé pour tous</div></div>
     </button>
-    <button class="delete-cancel" onclick="closeDeleteModal()">Annuler</button>
+    <button class="del-cancel" id="del-cancel-txt" onclick="closeDel()">Annuler</button>
   </div>
 </div>
 
-<div id="fb-status">🔥 Firebase connecté</div>
+<!-- LOGIN -->
+<div id="login">
+  <div class="lbox">
+    <!-- Bouton langue en haut à droite de la boite de connexion -->
+    <div style="width:100%;display:flex;justify-content:flex-end;margin-bottom:-10px;">
+      <button onclick="showLang()" style="background:var(--inp);border:1px solid var(--br);border-radius:20px;color:var(--tx);font-size:14px;font-weight:700;cursor:pointer;padding:5px 12px;display:flex;align-items:center;gap:5px;" id="login-lang-btn">🌐 Langue ▾</button>
+    </div>
+    <div class="llogo">💬</div>
+    <h2>Bermax</h2>
+    <p id="lsub">Connectez-vous avec votre adresse e-mail</p>
+
+    <div id="ppanel" style="width:100%;display:flex;flex-direction:column;gap:13px;align-items:center;">
+      <div class="lfield" style="align-items:center;">
+        <label id="llbl-photo">Photo de profil (optionnel)</label>
+        <div class="av-wrap" onclick="document.getElementById('ppic').click()">
+          <div class="av-ph" id="avph">📷</div>
+          <img id="avprev" style="display:none;"/>
+          <div class="av-ed">✏️</div>
+        </div>
+        <input type="file" id="ppic" accept="image/*" style="display:none" onchange="previewPic(this)"/>
+        <span style="font-size:11px;color:var(--muted);" id="llbl-tap">Appuie pour ajouter une photo</span>
+      </div>
+      <div class="lfield" style="width:100%;">
+        <label id="llbl-phone">Adresse e-mail</label>
+        <input type="email" id="email-inp" placeholder="exemple@email.com" style="font-size:16px;text-align:center;" onkeydown="if(event.key==='Enter')reqCode()"/>
+      </div>
+      <div class="lerr" id="ph-err">Veuillez entrer un e-mail valide</div>
+      <button class="lbtn" id="req-btn" onclick="reqCode()">Recevoir le code →</button>
+    </div>
+
+    <div id="cpanel">
+      <div style="font-size:16px;font-weight:800;text-align:center;" id="vtitle">🔐 Vérification</div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;">Code envoyé à <b id="cdest"></b></div>
+      <div class="cbox">
+        <div class="clbl">📩 E-mail envoyé</div>
+        <div style="font-size:12px;color:#fff;margin-top:3px;" id="smstxt">Vérifiez votre boîte mail et entrez le code reçu</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;">⏱ Valide pendant <b id="cdown">60</b>s</div>
+      <div class="lfield" style="align-items:center;">
+        <label id="llbl-code">Entrez le code à 6 chiffres</label>
+        <div class="cinps">
+          <input class="cinp" id="c0" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,0)" onkeydown="ckey(event,0)"/>
+          <input class="cinp" id="c1" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,1)" onkeydown="ckey(event,1)"/>
+          <input class="cinp" id="c2" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,2)" onkeydown="ckey(event,2)"/>
+          <input class="cinp" id="c3" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,3)" onkeydown="ckey(event,3)"/>
+          <input class="cinp" id="c4" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,4)" onkeydown="ckey(event,4)"/>
+          <input class="cinp" id="c5" maxlength="1" type="text" inputmode="numeric" oninput="cinp(this,5)" onkeydown="ckey(event,5)"/>
+        </div>
+      </div>
+      <div class="lerr" id="cerr">Code incorrect. Réessayez.</div>
+      <button class="lbtn" id="vbtn" onclick="verifyCode()">Vérifier ✓</button>
+      <div class="rrow">
+        <span id="llbl-notsent">Pas reçu ?</span>
+        <button class="rbtn" id="rbtn" onclick="resendCode()" disabled>Renvoyer (<span id="rtimer">60</span>s)</button>
+      </div>
+      <button class="lbtn2" id="back-login" onclick="backLogin()">← Retour</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
-// ── STATE ─────────────────────────────────────────────────────────────
-let activeId=null, emojiOpen=false, mediaRecorder=null;
-let audioChunks=[], recordingInterval=null, recordingSeconds=0;
-let isPaused=false, openMenuId=null;
-let profilePicData=null, myPhone="", myColor="#25d366";
-let generatedCode="", pendingPhone="", countdownTimer=null;
-let deletePending={cId:null,mId:null,from:null};
-let touchTimer=null;
+// ══ LANGUAGES ══════════════════════════════════════════════════════════
+const LANGS=[
+  {c:"fr",f:"🇫🇷",n:"Français",s:"France, Bénin, Côte d\'Ivoire, Sénégal..."},
+  {c:"en",f:"🇬🇧",n:"English",s:"UK, USA, Nigeria, Ghana, Kenya..."},
+  {c:"pt",f:"🇧🇷",n:"Português",s:"Brésil, Portugal, Angola..."},
+  {c:"ar",f:"🇸🇦",n:"العربية",s:"Maroc, Algérie, Égypte, Tunisie..."},
+  {c:"sw",f:"🇰🇪",n:"Kiswahili",s:"Kenya, Tanzanie, Ouganda..."},
+  {c:"ha",f:"🇳🇬",n:"Hausa",s:"Nigeria, Niger, Ghana..."},
+  {c:"yo",f:"🇳🇬",n:"Yorùbá",s:"Nigeria, Bénin, Togo..."},
+  {c:"es",f:"🇪🇸",n:"Español",s:"Espagne, Mexique, Colombie..."},
+  {c:"zh",f:"🇨🇳",n:"中文",s:"Chine, Taiwan, Singapour..."},
+  {c:"hi",f:"🇮🇳",n:"हिन्दी",s:"Inde, Népal..."},
+  {c:"de",f:"🇩🇪",n:"Deutsch",s:"Allemagne, Autriche, Suisse..."},
+  {c:"it",f:"🇮🇹",n:"Italiano",s:"Italie, Suisse..."},
+  {c:"ru",f:"🇷🇺",n:"Русский",s:"Russie, Ukraine, Kazakhstan..."},
+  {c:"tr",f:"🇹🇷",n:"Türkçe",s:"Turquie, Chypre..."},
+  {c:"am",f:"🇪🇹",n:"አማርኛ",s:"Éthiopie..."},
+  {c:"so",f:"🇸🇴",n:"Soomaali",s:"Somalie, Djibouti..."},
+  {c:"wo",f:"🇸🇳",n:"Wolof",s:"Sénégal, Gambie..."},
+  {c:"ln",f:"🇨🇩",n:"Lingála",s:"Congo, RDC, Angola..."},
+];
+const TR={
+  fr:{d:"Discussions",ct:"Contacts",wm:"Écrire un message…",sr:"Rechercher...",sc:"Rechercher un contact...",ls:"Connectez-vous avec votre adresse e-mail",lph:"Adresse e-mail",lphoto:"Photo de profil (optionnel)",ltap:"Appuie pour ajouter une photo",lrc:"Recevoir le code →",vt:"🔐 Vérification",sms:"Vérifiez votre boîte mail et entrez le code reçu",ec:"Entrez le code à 6 chiffres",vf:"Vérifier ✓",ns:"Pas reçu ?",bk:"← Retour",dltit:"Supprimer le message",dlme:"Supprimer pour moi",dlall:"Supprimer pour tout le monde",cnl:"Annuler",nomsg:"Aucun message. Dites bonjour ! 👋"},
+  en:{d:"Chats",ct:"Contacts",wm:"Write a message…",sr:"Search...",sc:"Search contacts...",ls:"Sign in with your email address",lph:"Email address",lphoto:"Profile photo (optional)",ltap:"Tap to add a photo",lrc:"Get code →",vt:"🔐 Verification",sms:"Check your inbox and enter the code",ec:"Enter the 6-digit code",vf:"Verify ✓",ns:"Not received?",bk:"← Back",dltit:"Delete message",dlme:"Delete for me",dlall:"Delete for everyone",cnl:"Cancel",nomsg:"No messages. Say hello! 👋"},
+  pt:{d:"Conversas",ct:"Contatos",wm:"Escreva uma mensagem…",sr:"Pesquisar...",sc:"Pesquisar contato...",ls:"Entre com seu endereço de e-mail",lph:"Endereço de e-mail",lphoto:"Foto de perfil (opcional)",ltap:"Toque para adicionar foto",lrc:"Receber código →",vt:"🔐 Verificação",sms:"Verifique sua caixa de entrada e insira o código",ec:"Digite o código de 6 dígitos",vf:"Verificar ✓",ns:"Não recebeu?",bk:"← Voltar",dltit:"Apagar mensagem",dlme:"Apagar para mim",dlall:"Apagar para todos",cnl:"Cancelar",nomsg:"Sem mensagens. Diga olá! 👋"},
+  es:{d:"Chats",ct:"Contactos",wm:"Escribe un mensaje…",sr:"Buscar...",sc:"Buscar contacto...",ls:"Inicia sesión con tu correo electrónico",lph:"Correo electrónico",lphoto:"Foto de perfil (opcional)",ltap:"Toca para agregar foto",lrc:"Recibir código →",vt:"🔐 Verificación",sms:"Revisa tu correo e ingresa el código",ec:"Ingresa el código de 6 dígitos",vf:"Verificar ✓",ns:"¿No recibiste?",bk:"← Atrás",dltit:"Eliminar mensaje",dlme:"Eliminar para mí",dlall:"Eliminar para todos",cnl:"Cancelar",nomsg:"Sin mensajes. ¡Di hola! 👋"},
+};
+function t(k){return(TR[lang]||TR.fr)[k]||TR.fr[k]||k;}
 
-const emojis=["😊","😂","❤️","👍","🙏","🔥","🎉","😢","😮","😡","🤔","👏","🥳","😎","💪","🌟","✅","🚀","💬","🎵"];
-const colors=["#6c3fc8","#d4842e","#2e7dd4","#c4425a","#2ea68a","#8a2ea6","#e05c2a","#1a8a6c"];
+let lang=localStorage.getItem("blang")||"fr";
+let selLang=lang;
 
-// Fake contacts (demo — in real app these come from Firebase)
+function renderLangs(f){
+  f=(f||"").toLowerCase();
+  const list=document.getElementById("lang-list");
+  list.innerHTML="";
+  const fl=LANGS.filter(l=>l.n.toLowerCase().includes(f)||l.s.toLowerCase().includes(f)||l.c.includes(f));
+  if(!fl.length){list.innerHTML='<div style="text-align:center;color:var(--muted);padding:18px;font-size:13px;">Aucun résultat</div>';return;}
+  fl.forEach(l=>{
+    const b=document.createElement("button");
+    b.className="litem"+(selLang===l.c?" sel":"");
+    b.onclick=()=>pickLang(l.c);
+    b.innerHTML=`<span class="lflag">${l.f}</span><div style="flex:1;"><div class="lname">${l.n}</div><div class="lsub">${l.s}</div></div><span class="lcheck">✓</span>`;
+    list.appendChild(b);
+  });
+}
+function filterLangs(v){renderLangs(v);}
+function pickLang(c){
+  selLang=c;lang=c;
+  localStorage.setItem("blang",c);
+  const l=LANGS.find(x=>x.c===c);
+  if(l){
+    document.getElementById("lang-btn").textContent=l.f;
+    const lb=document.getElementById("login-lang-btn");
+    if(lb) lb.innerHTML=l.f+" "+l.n+" ▾";
+  }
+  renderLangs(document.getElementById("lsearch").value);
+  applyTrans();
+  setTimeout(()=>closeLang(),350);
+  const lobj=LANGS.find(x=>x.c===c);
+  showToast((lobj?lobj.f+" ":"")+"Langue sélectionnée !");
+}
+function showLang(){
+  selLang=lang;
+  document.getElementById("lang-modal").classList.add("show");
+  const i=document.getElementById("lsearch");
+  i.value="";i.focus();
+  renderLangs();
+}
+function closeLang(e){
+  if(e&&e.target!==document.getElementById("lang-modal"))return;
+  document.getElementById("lang-modal").classList.remove("show");
+}
+function applyTrans(){
+  document.getElementById("lbl-chats").textContent=t("d");
+  document.getElementById("lbl-contacts").textContent=t("ct");
+  document.getElementById("search-inp").placeholder=t("sr");
+  document.getElementById("csearch").placeholder=t("sc");
+  document.getElementById("msg-input").placeholder=t("wm");
+  document.getElementById("lsub").textContent=t("ls");
+  document.getElementById("llbl-phone").textContent=t("lph");
+  document.getElementById("llbl-photo").textContent=t("lphoto");
+  document.getElementById("llbl-tap").textContent=t("ltap");
+  document.getElementById("req-btn").textContent=t("lrc");
+  document.getElementById("vtitle").textContent=t("vt");
+  document.getElementById("smstxt").textContent=t("sms");
+  document.getElementById("llbl-code").textContent=t("ec");
+  document.getElementById("vbtn").textContent=t("vf");
+  document.getElementById("llbl-notsent").textContent=t("ns");
+  document.getElementById("back-login").textContent=t("bk");
+  document.getElementById("del-title").textContent=t("dltit");
+  document.getElementById("del-me-txt").textContent=t("dlme");
+  document.getElementById("del-all-txt").textContent=t("dlall");
+  document.getElementById("del-cancel-txt").textContent=t("cnl");
+  const l=LANGS.find(x=>x.c===lang);
+  if(l)document.getElementById("lang-btn").textContent=l.f;
+}
+
+// ══ STATE ══════════════════════════════════════════════════════════════
+let activeId=null,emojiOpen=false,mediaRecorder=null;
+let audioChunks=[],recInterval=null,recSecs=0;
+let isPaused=false,ttimer=null;
+let picData=null,myEmail="",myColor="#25d366";
+let smsCode="",pendEmail="",cdTimer=null;
+let delPending={cId:null,mId:null,from:null};
+// EmailJS config
+const EMAILJS_PUBLIC_KEY="fksTp2OQ3uC_NZ8G_";
+const EMAILJS_SERVICE_ID="service_ors";
+const EMAILJS_TEMPLATE_ID="template_fssii4q";
+if(window.emailjs) emailjs.init(EMAILJS_PUBLIC_KEY);
+const EMOJIS=["😊","😂","❤️","👍","🙏","🔥","🎉","😢","😮","😡","🤔","👏","🥳","😎","💪","🌟","✅","🚀","💬","🎵"];
+const COLORS=["#6c3fc8","#d4842e","#2e7dd4","#c4425a","#2ea68a","#8a2ea6","#e05c2a","#1a8a6c"];
+
 const contacts=[
-  {id:"sophie",name:"Sophie M.",initials:"SM",color:"#6c3fc8",status:"En ligne"},
-  {id:"jean",name:"Jean-Luc B.",initials:"JB",color:"#d4842e",status:"Vu à 14h30"},
-  {id:"equipe",name:"Équipe 🚀",initials:"EP",color:"#2e7dd4",status:"5 membres"},
-  {id:"maman",name:"Maman 💕",initials:"MA",color:"#c4425a",status:"En ligne"},
-  {id:"david",name:"David R.",initials:"DR",color:"#2ea68a",status:"Vu hier"},
+  {id:"sophie",name:"Sophie M.",ini:"SM",color:"#6c3fc8",status:"En ligne",msgs:[
+    {id:1,from:"them",text:"Salut ! Comment ça va ? 😊",time:"09:12",read:true},
+    {id:2,from:"me",text:"Très bien merci ! Et toi ?",time:"09:14",read:true},
+    {id:3,from:"them",text:"On devrait se retrouver ce weekend !",time:"09:22",read:false},
+  ],unread:1},
+  {id:"jean",name:"Jean-Luc B.",ini:"JB",color:"#d4842e",status:"Vu à 14h30",msgs:[
+    {id:1,from:"them",text:"La réunion est confirmée pour lundi à 9h.",time:"Hier",read:true},
+    {id:2,from:"me",text:"Parfait, j\'y serai !",time:"Hier",read:true},
+  ],unread:0},
+  {id:"maman",name:"Maman 💕",ini:"MA",color:"#c4425a",status:"En ligne",msgs:[
+    {id:1,from:"them",text:"Tu viendras dîner dimanche ?",time:"Dim",read:true},
+    {id:2,from:"me",text:"Bien sûr, avec plaisir ! 😊",time:"Dim",read:true},
+  ],unread:0},
 ];
 
-// ── FIREBASE HELPERS ──────────────────────────────────────────────────
-function getDB(){ return window._db; }
+let myContacts=[
+  {id:"sophie",name:"Sophie M.",phone:"+22961000001",color:"#6c3fc8",ini:"SM",online:true},
+  {id:"jean",name:"Jean-Luc B.",phone:"+22961000002",color:"#d4842e",ini:"JB",online:false},
+  {id:"maman",name:"Maman 💕",phone:"+22961000003",color:"#c4425a",ini:"MA",online:true},
+  {id:"david",name:"David R.",phone:"+22961000004",color:"#2ea68a",ini:"DR",online:false},
+];
 
-function fbSaveUser(phone, picData){
-  if(!window._firebaseReady) return;
-  const r = window._ref(getDB(), `users/${phone.replace(/\D/g,'')}`);
-  window._set(r, {
-    phone, pic: picData||"", color: myColor,
-    lastSeen: Date.now()
-  });
+// ══ NAV ════════════════════════════════════════════════════════════════
+function switchNav(tab){
+  document.getElementById("nb-chats").classList.toggle("active",tab==="chats");
+  document.getElementById("nb-contacts").classList.toggle("active",tab==="contacts");
+  document.getElementById("chats-panel").style.display=tab==="chats"?"flex":"none";
+  document.getElementById("contacts-panel").classList.toggle("show",tab==="contacts");
 }
 
-function fbSendMessage(contactId, msg){
-  if(!window._firebaseReady){ showToast("⚠️ Firebase non connecté"); return; }
-  const r = window._ref(getDB(), `chats/${getChatId(contactId)}/messages`);
-  window._push(r, msg);
-}
-
-function fbListenMessages(contactId, callback){
-  if(!window._firebaseReady) return;
-  const r = window._ref(getDB(), `chats/${getChatId(contactId)}/messages`);
-  window._onValue(r, snap => {
-    const msgs = [];
-    snap.forEach(child => {
-      msgs.push({fbKey: child.key, ...child.val()});
-    });
-    callback(msgs);
-  });
-}
-
-function fbDeleteMessage(contactId, fbKey, forAll){
-  if(!window._firebaseReady) return;
-  const r = window._ref(getDB(), `chats/${getChatId(contactId)}/messages/${fbKey}`);
-  if(forAll){
-    window._update(r, {deleted_all:true, text:"🚫 Ce message a été supprimé", type:"text", data:null});
-  } else {
-    // Mark as deleted for me locally only
-  }
-}
-
-function getChatId(contactId){
-  const me = myPhone.replace(/\D/g,'') || "demo";
-  const arr = [me, contactId].sort();
-  return arr[0]+"_"+arr[1];
-}
-
-// ── LOGIN ─────────────────────────────────────────────────────────────
-function previewProfilePic(input){
-  if(!input.files||!input.files[0]) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    profilePicData=e.target.result;
-    const prev=document.getElementById("av-preview");
-    const ph=document.getElementById("av-placeholder");
-    prev.src=profilePicData; prev.style.display="block"; ph.style.display="none";
-    showToast("📷 Photo sélectionnée !");
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
-function changeMyPic(input){
-  if(!input.files||!input.files[0]) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    profilePicData=e.target.result;
-    const av=document.getElementById("my-avatar-icon");
-    av.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
-    if(myPhone) fbSaveUser(myPhone, e.target.result);
-    showToast("✅ Photo mise à jour !");
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
-// ── SMS AUTH (Seven.io — activer quand solde disponible) ─────────────
-const SEVEN_API_KEY = "mQoYNpVRjG1zkLdObP8dWwdAliZwnx6SkAoWaVDUwLxCI8VzgdvwLpuaK0U3vJR9";
-let smsCode = "";
-
-async function requestCode(){
-  const phone = document.getElementById("phone-number").value.trim();
-  const err   = document.getElementById("phone-error");
-  if(!phone){ err.classList.add("show"); return; }
-  err.classList.remove("show");
-  pendingPhone = phone;
-  myPhone = phone;
-
-  smsCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-  const btn = document.querySelector("#panel-phone .login-btn");
-  btn.textContent = "📩 Envoi en cours...";
-  btn.disabled = true;
-
-  try {
-    const resp = await fetch("https://gateway.seven.io/api/sms", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-Api-Key": SEVEN_API_KEY
-      },
-      body: new URLSearchParams({
-        to: phone,
-        from: "Bermax",
-        text: "Votre code Bermax : " + smsCode + ". Valable 60 secondes."
-      })
-    });
-    const result = await resp.text();
-    console.log("Seven.io:", result);
-
-    if(result.startsWith("100") || result.includes("100")){
-      showSmsPanel(phone);
-      showToast("✅ SMS envoyé à " + phone + " !");
-    } else {
-      smsCode = "";
-      btn.textContent = "Recevoir le code →";
-      btn.disabled = false;
-      showToast("❌ Solde insuffisant sur Seven.io. Rechargez votre compte.");
-    }
-  } catch(e){
-    smsCode = "";
-    btn.textContent = "Recevoir le code →";
-    btn.disabled = false;
-    showToast("❌ Erreur réseau.");
-  }
-}
-
-function showSmsPanel(phone){
-  document.getElementById("panel-phone").style.display = "none";
-  document.getElementById("confirm-panel").classList.add("show");
-  document.getElementById("confirm-dest").textContent = phone;
-  for(let i=0;i<6;i++){
-    const ci=document.getElementById("ci"+i);
-    ci.value=""; ci.classList.remove("filled","error");
-  }
-  document.getElementById("code-error").classList.remove("show");
-  document.getElementById("ci0").focus();
-  startCountdown();
-}
-
-function startCountdown(){
-  clearInterval(countdownTimer);
-  let secs=60;
-  document.getElementById("countdown-display").textContent=secs;
-  document.getElementById("resend-timer").textContent=secs;
-  const btn=document.getElementById("resend-btn");
-  btn.disabled=true; btn.textContent="Renvoyer ("+secs+"s)";
-  countdownTimer=setInterval(()=>{
-    secs--;
-    document.getElementById("countdown-display").textContent=secs;
-    document.getElementById("resend-timer").textContent=secs;
-    btn.textContent="Renvoyer ("+secs+"s)";
-    if(secs<=0){
-      clearInterval(countdownTimer);
-      btn.disabled=false;
-      btn.textContent="Renvoyer le code";
-      document.getElementById("countdown-display").textContent="expiré";
-      smsCode="";
-    }
-  },1000);
-}
-
-function codeInput(el,idx){
-  el.value=el.value.replace(/[^0-9]/g,"");
-  if(el.value){el.classList.add("filled");if(idx<5)document.getElementById("ci"+(idx+1)).focus();else verifyCode();}
-  else el.classList.remove("filled");
-}
-function codeKey(e,idx){if(e.key==="Backspace"&&!document.getElementById("ci"+idx).value&&idx>0)document.getElementById("ci"+(idx-1)).focus();}
-
-function verifyCode(){
-  let entered="";
-  for(let i=0;i<6;i++) entered+=document.getElementById("ci"+i).value;
-  if(entered.length<6){showToast("⚠️ Entrez les 6 chiffres");return;}
-  if(!smsCode){showToast("❌ Code expiré, renvoie un SMS");return;}
-
-  if(entered === smsCode){
-    clearInterval(countdownTimer);
-    smsCode="";
-    myColor = colors[Math.floor(Math.random()*colors.length)];
-    loginSuccess();
-  } else {
-    document.getElementById("code-error").classList.add("show");
-    for(let i=0;i<6;i++){
-      const ci=document.getElementById("ci"+i);
-      ci.classList.add("error");
-      setTimeout(()=>ci.classList.remove("error"),600);
-    }
-    showToast("❌ Code incorrect !");
-  }
-}
-
-async function resendCode(){
-  smsCode = Math.floor(100000 + Math.random() * 900000).toString();
-  try {
-    await fetch("https://gateway.seven.io/api/sms", {
-      method: "POST",
-      headers: {"Content-Type":"application/x-www-form-urlencoded","X-Api-Key":SEVEN_API_KEY},
-      body: new URLSearchParams({to:pendingPhone,from:"Bermax",text:"Votre code Bermax : "+smsCode+". Valable 60 secondes."})
-    });
-    for(let i=0;i<6;i++){const ci=document.getElementById("ci"+i);ci.value="";ci.classList.remove("filled","error");}
-    document.getElementById("code-error").classList.remove("show");
-    document.getElementById("ci0").focus();
-    startCountdown();
-    showToast("📩 Nouveau SMS envoyé !");
-  } catch(e){ showToast("❌ Erreur envoi SMS"); }
-}
-
-function backToLogin(){
-  clearInterval(countdownTimer);
-  smsCode="";
-  document.getElementById("confirm-panel").classList.remove("show");
-  document.getElementById("panel-phone").style.display="flex";
-  const btn=document.querySelector("#panel-phone .login-btn");
-  btn.textContent="Recevoir le code →";
-  btn.disabled=false;
-}
-
-function loginSuccess(){
-  showToast("✅ Connecté avec "+myPhone+" !");
-  const av=document.getElementById("my-avatar-icon");
-  if(profilePicData){
-    av.innerHTML=`<img src="${profilePicData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
-    av.style.background="transparent";
-  } else {
-    av.textContent=myPhone.slice(-2);
-    av.style.background=myColor;
-  }
-  // Save user to Firebase
-  fbSaveUser(myPhone, profilePicData);
-  // Show Firebase status
-  if(window._firebaseReady){
-    const s=document.getElementById("fb-status");
-    s.classList.add("show");
-    setTimeout(()=>s.classList.remove("show"),3000);
-  }
-  setTimeout(()=>document.getElementById("login-screen").classList.add("hidden"),800);
-  renderChatList();
-}
-
-// ── SIDEBAR ───────────────────────────────────────────────────────────
-function renderChatList(filter=""){
-  const list=document.getElementById("chat-list");
+// ══ CONTACTS ═══════════════════════════════════════════════════════════
+function renderContacts(f){
+  f=(f||"").toLowerCase();
+  const list=document.getElementById("contacts-list");
   list.innerHTML="";
-  contacts.filter(c=>c.name.toLowerCase().includes(filter.toLowerCase())).forEach(c=>{
-    const div=document.createElement("div");
-    div.className="chat-item"+(c.id===activeId?" active":"");
-    div.onclick=()=>openChat(c.id);
-    div.innerHTML=`
-      <div class="avatar" style="background:${c.color}">${c.initials}${c.status==="En ligne"?'<div class="dot"></div>':''}</div>
-      <div class="chat-meta">
-        <div class="chat-name">${c.name}</div>
-        <div class="chat-preview" id="preview-${c.id}">Appuyez pour discuter</div>
-      </div>
-      <div class="chat-info">
-        <div class="chat-time" id="time-${c.id}"></div>
-        <div id="badge-${c.id}"></div>
-      </div>`;
+  const fl=myContacts.filter(c=>c.name.toLowerCase().includes(f)||c.phone.includes(f));
+  if(!fl.length){list.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px;">Aucun contact</div>';return;}
+  const sorted=[...fl].sort((a,b)=>a.name.localeCompare(b.name));
+  let cur="";
+  sorted.forEach(c=>{
+    const l=c.name[0].toUpperCase();
+    if(l!==cur){cur=l;const d=document.createElement("div");d.className="cletter";d.textContent=l;list.appendChild(d);}
+    const div=document.createElement("div");div.className="citem";
+    div.innerHTML=`<div class="av" style="background:${c.color}">${c.ini}${c.online?'<div class="dot"></div>':''}</div><div style="flex:1;min-width:0;"><div class="cname">${c.name}</div><div class="cphone">${c.phone}</div></div><button class="cmsg-btn" onclick="startChatContact('${c.id}')">💬</button>`;
     list.appendChild(div);
   });
 }
-function filterChats(val){renderChatList(val);}
+function filterContacts(v){renderContacts(v);}
+function startChatContact(id){
+  switchNav("chats");
+  const c=myContacts.find(x=>x.id===id);
+  if(!c)return;
+  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,ini:c.ini,color:c.color,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
+  renderChats();openChat(id);
+  if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
+}
+function openAddContact(){document.getElementById("add-modal").classList.add("show");document.getElementById("nc-name").focus();}
+function closeAdd(e){if(e&&e.target!==document.getElementById("add-modal"))return;document.getElementById("add-modal").classList.remove("show");document.getElementById("nc-name").value="";document.getElementById("nc-phone").value="";}
+function saveContact(){
+  const n=document.getElementById("nc-name").value.trim();
+  const p=document.getElementById("nc-phone").value.trim();
+  const err=document.getElementById("nc-err");
+  if(!n||!p){err.classList.add("show");return;}
+  err.classList.remove("show");
+  const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+  const ini=n.split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase();
+  const id="c_"+Date.now();
+  myContacts.push({id,name:n,phone:p,color,ini,online:false});
+  closeAdd();renderContacts();switchNav("contacts");
+  showToast("✅ Contact ajouté : "+n);
+}
+
+// ══ CHAT LIST ══════════════════════════════════════════════════════════
+function renderChats(f){
+  f=(f||"").toLowerCase();
+  const list=document.getElementById("chat-list");
+  list.innerHTML="";
+  contacts.filter(c=>c.name.toLowerCase().includes(f)).forEach(c=>{
+    const last=c.msgs[c.msgs.length-1];
+    const div=document.createElement("div");
+    div.className="ci"+(c.id===activeId?" active":"");
+    div.onclick=()=>openChat(c.id);
+    const prev=last?(last.deleted_all?"🚫 Supprimé":last.from==="me"?"Vous : "+last.text:last.text):"";
+    div.innerHTML=`<div class="av" style="background:${c.color}">${c.ini}${c.status==="En ligne"?'<div class="dot"></div>':''}</div><div class="cm"><div class="cn">${c.name}</div><div class="cp">${prev}</div></div><div class="ci-right"><div class="ct">${last?last.time:""}</div>${c.unread?`<div class="bdg">${c.unread}</div>`:""}</div>`;
+    list.appendChild(div);
+  });
+}
+function filterChats(v){renderChats(v);}
 
 function openChat(id){
   activeId=id;
   const c=contacts.find(x=>x.id===id);
-  document.getElementById("header-name").textContent=c.name;
-  document.getElementById("header-status").textContent=c.status;
-  const ha=document.getElementById("header-avatar");
-  ha.style.background=c.color;
-  ha.innerHTML=c.initials+(c.status==="En ligne"?'<div class="dot"></div>':"");
-  document.getElementById("empty-state").style.display="none";
+  if(!c)return;
+  c.unread=0;
+  renderChats(document.getElementById("search-inp").value);
+  document.getElementById("hname").textContent=c.name;
+  document.getElementById("hstatus").textContent=c.status;
+  const hav=document.getElementById("hav");
+  hav.style.background=c.color;
+  hav.innerHTML=c.ini+(c.status==="En ligne"?'<div class="dot"></div>':"");
+  document.getElementById("empty").style.display="none";
   document.getElementById("chat-view").style.display="flex";
-  if(window.innerWidth<=640) document.getElementById("sidebar").classList.add("hidden");
-  document.getElementById("messages").innerHTML=`<div class="day-label">Chargement...</div>`;
-  // Load messages from Firebase
-  fbListenMessages(id, msgs => {
-    renderMessagesFromFB(msgs, id);
-  });
+  if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
+  renderMsgs(c);
   document.getElementById("msg-input").focus();
-  renderChatList(document.getElementById("search-input").value);
 }
-
 function goBack(){
   document.getElementById("sidebar").classList.remove("hidden");
   document.getElementById("chat-view").style.display="none";
-  document.getElementById("empty-state").style.display="flex";
+  document.getElementById("empty").style.display="flex";
   activeId=null;
 }
 
-// ── MESSAGES ─────────────────────────────────────────────────────────
-function renderMessagesFromFB(msgs, contactId){
+// ══ MESSAGES ═══════════════════════════════════════════════════════════
+function renderMsgs(c){
   const box=document.getElementById("messages");
-  box.innerHTML=`<div class="day-label">Aujourd'hui</div>`;
-  if(msgs.length===0){
-    box.innerHTML+=`<div style="text-align:center;color:var(--text-muted);font-size:13px;margin-top:20px;">Aucun message. Dites bonjour ! 👋</div>`;
-    scrollBottom(); return;
-  }
-  msgs.forEach(m=>{
-    if(m.deleted_me) return;
-    const isMe = m.sender===myPhone.replace(/\D/g,'') || m.sender===myPhone;
+  box.innerHTML='<div class="dlabel">Aujourd\'hui</div>';
+  if(!c.msgs.length){box.innerHTML+=`<div style="text-align:center;color:var(--muted);font-size:13px;margin-top:18px;">${t("nomsg")}</div>`;scrollBot();return;}
+  c.msgs.forEach(m=>{
+    if(m.del_me)return;
     const div=document.createElement("div");
-    div.className="msg "+(isMe?"me":"them");
-    div.dataset.fbkey=m.fbKey;
-    const tick=isMe?`<span class="tick ${m.read?"read":""}">✓✓</span>`:"";
-    let content="";
-    if(m.deleted_all) content=`<span class="deleted-msg">🚫 Ce message a été supprimé</span>`;
-    else if(m.type==="image") content=`<img src="${m.data}" onclick="openMedia('${m.data}','image')"/>`;
-    else if(m.type==="video") content=`<video src="${m.data}" controls></video>`;
-    else if(m.type==="audio") content=`<div class="audio-bubble"><audio src="${m.data}" controls></audio></div>`;
-    else content=escHtml(m.text||"");
-    const delBtn=(!m.deleted_all&&!m.deleted_me)?`<button class="msg-del-btn" onclick="openDeleteModal('${contactId}','${m.fbKey}','${isMe?'me':'them'}')">🗑</button>`:"";
-    div.innerHTML=`
-      <div class="bubble" oncontextmenu="openDeleteModal('${contactId}','${m.fbKey}','${isMe?'me':'them'}');return false;" ontouchstart="handleTouchStart(event,'${contactId}','${m.fbKey}','${isMe?'me':'them'}')" ontouchend="handleTouchEnd()">${content}</div>
-      <div class="msg-time">${m.time||""} ${tick} ${delBtn}</div>`;
+    div.className="msg "+(m.from==="me"?"me":"them");
+    const tick=m.from==="me"?`<span class="tick ${m.read?"read":""}">✓✓</span>`:"";
+    let ct="";
+    if(m.del_all)ct='<span class="del-msg">🚫 Ce message a été supprimé</span>';
+    else if(m.type==="image")ct=`<img src="${m.data}" onclick="openMedia('${m.data}','image')"/>`;
+    else if(m.type==="video")ct=`<video src="${m.data}" controls></video>`;
+    else if(m.type==="audio")ct=`<audio src="${m.data}" controls></audio>`;
+    else ct=esc(m.text||"");
+    const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}',${m.id},'${m.from}')">🗑</button>`:"";
+    div.innerHTML=`<div class="bbl" oncontextmenu="openDel('${c.id}',${m.id},'${m.from}');return false;" ontouchstart="ts(event,'${c.id}',${m.id},'${m.from}')" ontouchend="te()">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
     box.appendChild(div);
-    // Update preview in sidebar
-    const prev=document.getElementById("preview-"+contactId);
-    const timeEl=document.getElementById("time-"+contactId);
-    if(prev) prev.textContent=(isMe?"Vous : ":"")+(m.text||"📎 Média");
-    if(timeEl) timeEl.textContent=m.time||"";
   });
-  scrollBottom();
+  scrollBot();
 }
-
-function scrollBottom(){
-  const box=document.getElementById("messages");
-  if(box) box.scrollTop=box.scrollHeight;
-}
+function scrollBot(){const b=document.getElementById("messages");if(b)b.scrollTop=b.scrollHeight;}
 function getTime(){const n=new Date();return n.getHours().toString().padStart(2,"0")+":"+n.getMinutes().toString().padStart(2,"0");}
 
-// ── SEND ─────────────────────────────────────────────────────────────
-function sendMessage(){
-  const input=document.getElementById("msg-input");
-  const text=input.value.trim();
-  if(!text||!activeId) return;
-  const msg={
-    sender: myPhone.replace(/\D/g,'')||"demo",
-    text, type:"text",
-    time: getTime(),
-    timestamp: Date.now(),
-    read: false
-  };
-  fbSendMessage(activeId, msg);
-  input.value=""; input.style.height="auto";
+// ══ SEND ════════════════════════════════════════════════════════════════
+function sendMsg(){
+  const inp=document.getElementById("msg-input");
+  const text=inp.value.trim();
+  if(!text||!activeId)return;
+  const c=contacts.find(x=>x.id===activeId);
+  c.msgs.push({id:Date.now(),from:"me",text,time:getTime(),read:false});
+  inp.value="";inp.style.height="auto";
+  renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+  if(window._firebaseReady){const r=window._ref(window._db,"chats/"+activeId+"/msgs");window._push(r,{sender:myEmail||"demo",text,type:"text",time:getTime(),ts:Date.now(),read:false});}
+  setTimeout(()=>showTyping(c),800);
+  setTimeout(()=>{
+    const rep=["Bien sûr ! 😊","Super idée !","OK ! 👍","Haha 😂","Bonne nouvelle !","On en reparlera 😊"];
+    c.msgs.push({id:Date.now()+1,from:"them",text:rep[Math.floor(Math.random()*rep.length)],time:getTime(),read:false});
+    renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+  },2200);
 }
-
 function sendFile(input){
-  if(!input.files||!input.files[0]||!activeId) return;
+  if(!input.files||!input.files[0]||!activeId)return;
   const file=input.files[0];
-  const isImage=file.type.startsWith("image/"),isVideo=file.type.startsWith("video/");
-  if(!isImage&&!isVideo){showToast("❌ Format non supporté");return;}
+  const isImg=file.type.startsWith("image/"),isVid=file.type.startsWith("video/");
+  if(!isImg&&!isVid){showToast("❌ Format non supporté");return;}
   const reader=new FileReader();
-  reader.onload=function(e){
-    const msg={
-      sender: myPhone.replace(/\D/g,'')||"demo",
-      type: isImage?"image":"video",
-      data: e.target.result,
-      text: isImage?"📷 Photo":"🎥 Vidéo",
-      time: getTime(),
-      timestamp: Date.now(),
-      read: false
-    };
-    fbSendMessage(activeId, msg);
-    showToast(isImage?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
+  reader.onload=e=>{
+    const c=contacts.find(x=>x.id===activeId);
+    c.msgs.push({id:Date.now(),from:"me",type:isImg?"image":"video",data:e.target.result,text:isImg?"📷":"🎥",time:getTime(),read:false});
+    renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+    showToast(isImg?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
   };
-  reader.readAsDataURL(file); input.value="";
+  reader.readAsDataURL(file);input.value="";
 }
-
 function openMedia(src,type){
   const o=document.createElement("div");
   o.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;";
   o.onclick=()=>o.remove();
   const el=document.createElement(type==="image"?"img":"video");
-  el.src=src; el.style.cssText="max-width:95%;max-height:90vh;border-radius:12px;";
-  if(type==="video") el.controls=true;
-  o.appendChild(el); document.body.appendChild(o);
+  el.src=src;el.style.cssText="max-width:95%;max-height:90vh;border-radius:11px;";
+  if(type==="video")el.controls=true;
+  o.appendChild(el);document.body.appendChild(o);
 }
 
-// ── DELETE ────────────────────────────────────────────────────────────
-function openDeleteModal(cId,fbKey,from){
-  deletePending={cId,mId:fbKey,from};
-  document.getElementById("del-for-all-btn").style.display=from==="me"?"flex":"none";
-  document.getElementById("delete-modal").classList.add("show");
+// ══ DELETE ══════════════════════════════════════════════════════════════
+function openDel(cId,mId,from){
+  delPending={cId,mId,from};
+  document.getElementById("del-all-btn").style.display=from==="me"?"flex":"none";
+  document.getElementById("del-modal").classList.add("show");
 }
-function closeDeleteModal(e){
-  if(e&&e.target!==document.getElementById("delete-modal")) return;
-  document.getElementById("delete-modal").classList.remove("show");
-  deletePending={cId:null,mId:null,from:null};
+function closeDel(e){
+  if(e&&e.target!==document.getElementById("del-modal"))return;
+  document.getElementById("del-modal").classList.remove("show");
+  delPending={cId:null,mId:null,from:null};
 }
-function confirmDeleteForMe(){
-  // Mark locally
-  const {cId,mId}=deletePending;
-  fbDeleteMessage(cId,mId,false);
-  // Re-render with local flag
-  fbListenMessages(cId, msgs=>{
-    msgs.forEach(m=>{ if(m.fbKey===mId) m.deleted_me=true; });
-    renderMessagesFromFB(msgs,cId);
-  });
-  document.getElementById("delete-modal").classList.remove("show");
-  showToast("🙈 Message supprimé pour vous");
+function doDelMe(){
+  const {cId,mId}=delPending;
+  const c=contacts.find(x=>x.id===cId);
+  const m=c.msgs.find(x=>x.id===mId);
+  if(m)m.del_me=true;
+  renderMsgs(c);document.getElementById("del-modal").classList.remove("show");
+  showToast("🙈 "+t("dlme"));
 }
-function confirmDeleteForAll(){
-  const {cId,mId}=deletePending;
-  fbDeleteMessage(cId,mId,true);
-  document.getElementById("delete-modal").classList.remove("show");
-  showToast("🗑️ Message supprimé pour tout le monde");
+function doDelAll(){
+  const {cId,mId}=delPending;
+  const c=contacts.find(x=>x.id===cId);
+  const m=c.msgs.find(x=>x.id===mId);
+  if(m){m.del_all=true;m.text="🚫 Ce message a été supprimé";}
+  renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+  document.getElementById("del-modal").classList.remove("show");
+  showToast("🗑️ "+t("dlall"));
+}
+function ts(e,cId,mId,from){ttimer=setTimeout(()=>openDel(cId,mId,from),500);}
+function te(){clearTimeout(ttimer);}
+
+// ══ TYPING ══════════════════════════════════════════════════════════════
+function showTyping(c){
+  const box=document.getElementById("messages");
+  const div=document.createElement("div");div.className="msg them";div.id="tbbl";
+  div.innerHTML='<div class="bbl"><div class="typin"><span></span><span></span><span></span></div></div>';
+  box.appendChild(div);scrollBot();
+  setTimeout(()=>{const t=document.getElementById("tbbl");if(t)t.remove();},1400);
 }
 
-// ── TOUCH / CONTEXT MENU ─────────────────────────────────────────────
-function handleTouchStart(e,cId,mId,from){touchTimer=setTimeout(()=>openDeleteModal(cId,mId,from),500);}
-function handleTouchEnd(){clearTimeout(touchTimer);}
-
-// ── VOICE RECORDING ───────────────────────────────────────────────────
-function startRecording(){
-  if(!activeId){showToast("⚠️ Ouvre une conversation d'abord");return;}
+// ══ VOICE ═══════════════════════════════════════════════════════════════
+function startRec(){
+  if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
   if(!navigator.mediaDevices){showToast("❌ Micro non supporté");return;}
   navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-    audioChunks=[];isPaused=false;recordingSeconds=0;
+    audioChunks=[];isPaused=false;recSecs=0;
     mediaRecorder=new MediaRecorder(stream);
     mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
     mediaRecorder.onstop=()=>stream.getTracks().forEach(t=>t.stop());
     mediaRecorder.start(100);
-    document.getElementById("voice-bar").classList.add("show");
+    document.getElementById("vbar").classList.add("show");
     document.getElementById("mic-btn").classList.add("recording");
-    document.getElementById("voice-wave").classList.remove("paused");
     const inp=document.getElementById("msg-input");
-    inp.disabled=true; inp.placeholder="🎤 Enregistrement..."; inp.style.opacity=".4";
-    updateTimerDisplay();
-    recordingInterval=setInterval(()=>{if(!isPaused){recordingSeconds++;updateTimerDisplay();}},1000);
+    inp.disabled=true;inp.placeholder="🎤 Enregistrement...";inp.style.opacity=".4";
+    updateTimer();
+    recInterval=setInterval(()=>{if(!isPaused){recSecs++;updateTimer();}},1000);
     showToast("🎤 Enregistrement démarré");
-  }).catch(()=>showToast("❌ Accès micro refusé. Utilise un serveur HTTP."));
+  }).catch(()=>showToast("❌ Accès micro refusé"));
 }
-function updateTimerDisplay(){
-  const m=Math.floor(recordingSeconds/60),s=(recordingSeconds%60).toString().padStart(2,"0");
-  document.getElementById("voice-timer").textContent=m+":"+s;
+function updateTimer(){
+  const m=Math.floor(recSecs/60),s=(recSecs%60).toString().padStart(2,"0");
+  document.getElementById("vtimer").textContent=m+":"+s;
 }
 function togglePause(){
   if(!mediaRecorder)return;
   if(isPaused){
     mediaRecorder.resume();isPaused=false;
-    document.getElementById("pause-icon").textContent="⏸️";
-    document.getElementById("voice-wave").classList.remove("paused");
-    document.getElementById("rec-dot-big").style.background="#ff4444";
-    document.getElementById("rec-dot-big").style.animation="blink-dot 1s infinite";
-    document.getElementById("rec-status-txt").textContent="🎙 REC";
+    document.getElementById("picon").textContent="⏸️";
+    document.getElementById("vwave").classList.remove("paused");
+    document.getElementById("rdot").style.background="#ff4444";
+    document.getElementById("rdot").style.animation="bld 1s infinite";
+    document.getElementById("rstatus").textContent="🎙 REC";
     showToast("▶️ Repris");
   }else{
     mediaRecorder.pause();isPaused=true;
-    document.getElementById("pause-icon").textContent="▶️";
-    document.getElementById("voice-wave").classList.add("paused");
-    document.getElementById("rec-dot-big").style.background="#ffaa00";
-    document.getElementById("rec-dot-big").style.animation="none";
-    document.getElementById("rec-status-txt").textContent="⏸ Pause";
+    document.getElementById("picon").textContent="▶️";
+    document.getElementById("vwave").classList.add("paused");
+    document.getElementById("rdot").style.background="#ffaa00";
+    document.getElementById("rdot").style.animation="none";
+    document.getElementById("rstatus").textContent="⏸ Pause";
     showToast("⏸ En pause");
   }
 }
-function cancelRecording(){stopRecorderClean();showToast("🗑️ Enregistrement annulé");}
-function sendRecording(){
+function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
+function sendRec(){
   if(!mediaRecorder)return;
   mediaRecorder.onstop=()=>{
     const blob=new Blob(audioChunks,{type:"audio/webm"});
     const reader=new FileReader();
-    reader.onload=function(ev){
-      const msg={
-        sender: myPhone.replace(/\D/g,'')||"demo",
-        type:"audio", data:ev.target.result,
-        text:"🎤 Vocal", time:getTime(),
-        timestamp:Date.now(), read:false
-      };
-      fbSendMessage(activeId, msg);
+    reader.onload=ev=>{
+      const c=contacts.find(x=>x.id===activeId);
+      c.msgs.push({id:Date.now(),from:"me",type:"audio",data:ev.target.result,text:"🎤",time:getTime(),read:false});
+      renderMsgs(c);renderChats(document.getElementById("search-inp").value);
       showToast("🎤 Vocal envoyé !");
     };
     reader.readAsDataURL(blob);
     mediaRecorder.stream.getTracks().forEach(t=>t.stop());
   };
-  mediaRecorder.stop(); stopRecorderClean(false);
+  mediaRecorder.stop();stopRec(false);
 }
-function stopRecorderClean(stopRec=true){
-  clearInterval(recordingInterval);recordingSeconds=0;isPaused=false;
-  if(stopRec&&mediaRecorder&&mediaRecorder.state!=="inactive"){mediaRecorder.stream.getTracks().forEach(t=>t.stop());mediaRecorder.stop();}
+function stopRec(doStop=true){
+  clearInterval(recInterval);recSecs=0;isPaused=false;
+  if(doStop&&mediaRecorder&&mediaRecorder.state!=="inactive"){mediaRecorder.stream.getTracks().forEach(t=>t.stop());mediaRecorder.stop();}
   audioChunks=[];
-  document.getElementById("voice-bar").classList.remove("show");
+  document.getElementById("vbar").classList.remove("show");
   document.getElementById("mic-btn").classList.remove("recording");
-  document.getElementById("voice-timer").textContent="0:00";
-  document.getElementById("pause-icon").textContent="⏸️";
-  document.getElementById("rec-status-txt").textContent="🎙 REC";
-  document.getElementById("voice-wave").classList.remove("paused");
-  const rd=document.getElementById("rec-dot-big");
-  if(rd){rd.style.background="#ff4444";rd.style.animation="blink-dot 1s infinite";}
-  const inp2=document.getElementById("msg-input");
-  inp2.disabled=false; inp2.placeholder="Écrire un message…"; inp2.style.opacity="1";
+  document.getElementById("vtimer").textContent="0:00";
+  document.getElementById("picon").textContent="⏸️";
+  document.getElementById("rstatus").textContent="🎙 REC";
+  document.getElementById("vwave").classList.remove("paused");
+  const inp=document.getElementById("msg-input");
+  inp.disabled=false;inp.placeholder=t("wm");inp.style.opacity="1";
 }
 
-// ── MISC ─────────────────────────────────────────────────────────────
-function toggleMute(btn){
+// ══ LOGIN ════════════════════════════════════════════════════════════════
+function previewPic(input){
+  if(!input.files||!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    picData=e.target.result;
+    document.getElementById("avprev").src=picData;
+    document.getElementById("avprev").style.display="block";
+    document.getElementById("avph").style.display="none";
+    showToast("📷 Photo sélectionnée !");
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function changeMyPic(input){
+  if(!input.files||!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    picData=e.target.result;
+    const av=document.getElementById("myav");
+    av.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
+    showToast("✅ Photo mise à jour !");
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function isValidEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function reqCode(){
+  const email=document.getElementById("email-inp").value.trim();
+  const err=document.getElementById("ph-err");
+  if(!email||!isValidEmail(email)){err.classList.add("show");return;}
+  err.classList.remove("show");
+  pendEmail=email;myEmail=email;
+  smsCode=Math.floor(100000+Math.random()*900000).toString();
+  const btn=document.getElementById("req-btn");
+  btn.textContent="📩 Envoi...";btn.disabled=true;
+  try{
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      email: email,
+      code: smsCode,
+      title: "Vérification Bermax",
+      name: "Bermax"
+    });
+    showSmsPanel(email);showToast("✅ E-mail envoyé à "+email+" !");
+  }catch(e){
+    console.error(e);
+    btn.textContent=t("lrc");btn.disabled=false;
+    showToast("❌ Erreur envoi e-mail");
+  }
+}
+function showSmsPanel(phone){
+  document.getElementById("ppanel").style.display="none";
+  document.getElementById("cpanel").classList.add("show");
+  document.getElementById("cdest").textContent=phone;
+  for(let i=0;i<6;i++){const ci=document.getElementById("c"+i);ci.value="";ci.classList.remove("fil","err");}
+  document.getElementById("cerr").classList.remove("show");
+  document.getElementById("c0").focus();
+  startCd();
+}
+function startCd(){
+  clearInterval(cdTimer);
+  let s=60;
+  document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
+  const btn=document.getElementById("rbtn");btn.disabled=true;btn.textContent="Renvoyer ("+s+"s)";
+  cdTimer=setInterval(()=>{
+    s--;document.getElementById("cdown").textContent=s;document.getElementById("rtimer").textContent=s;
+    btn.textContent="Renvoyer ("+s+"s)";
+    if(s<=0){clearInterval(cdTimer);btn.disabled=false;btn.textContent="Renvoyer le code";document.getElementById("cdown").textContent="expiré";smsCode="";}
+  },1000);
+}
+function cinp(el,idx){
+  el.value=el.value.replace(/[^0-9]/g,"");
+  if(el.value){el.classList.add("fil");if(idx<5)document.getElementById("c"+(idx+1)).focus();else verifyCode();}
+  else el.classList.remove("fil");
+}
+function ckey(e,idx){if(e.key==="Backspace"&&!document.getElementById("c"+idx).value&&idx>0)document.getElementById("c"+(idx-1)).focus();}
+function verifyCode(){
+  let entered="";for(let i=0;i<6;i++)entered+=document.getElementById("c"+i).value;
+  if(entered.length<6){showToast("⚠️ Entrez les 6 chiffres");return;}
+  if(!smsCode){showToast("❌ Code expiré");return;}
+  if(entered===smsCode){
+    clearInterval(cdTimer);smsCode="";
+    myColor=COLORS[Math.floor(Math.random()*COLORS.length)];
+    loginOk();
+  }else{
+    document.getElementById("cerr").classList.add("show");
+    for(let i=0;i<6;i++){const ci=document.getElementById("c"+i);ci.classList.add("err");setTimeout(()=>ci.classList.remove("err"),600);}
+    showToast("❌ Code incorrect !");
+  }
+}
+async function resendCode(){
+  smsCode=Math.floor(100000+Math.random()*900000).toString();
+  try{
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      email: pendEmail,
+      code: smsCode,
+      title: "Vérification Bermax",
+      name: "Bermax"
+    });
+    for(let i=0;i<6;i++){const ci=document.getElementById("c"+i);ci.value="";ci.classList.remove("fil","err");}
+    document.getElementById("cerr").classList.remove("show");
+    document.getElementById("c0").focus();
+    startCd();showToast("📩 Nouvel e-mail envoyé !");
+  }catch(e){showToast("❌ Erreur envoi e-mail");}
+}
+function backLogin(){
+  clearInterval(cdTimer);smsCode="";
+  document.getElementById("cpanel").classList.remove("show");
+  document.getElementById("ppanel").style.display="flex";
+  const btn=document.getElementById("req-btn");btn.textContent=t("lrc");btn.disabled=false;
+}
+function loginOk(){
+  showToast("✅ Connecté avec "+myEmail+" !");
+  const av=document.getElementById("myav");
+  if(picData){av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;av.style.background="transparent";}
+  else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
+  if(window._firebaseReady){
+    const safeId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+    const r=window._ref(window._db,"users/"+safeId);
+    window._set(r,{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
+  }
+  setTimeout(()=>document.getElementById("login").classList.add("hidden"),700);
+}
+
+// ══ MISC ════════════════════════════════════════════════════════════════
+function toggleMute(){
+  const btn=document.getElementById("mute-btn");
   btn.classList.toggle("muted");
   btn.textContent=btn.classList.contains("muted")?"🔇":"🔔";
   showToast(btn.classList.contains("muted")?"🔇 Contact muté":"🔔 Notifications activées");
 }
-function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}
-function autoResize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,120)+"px";}
-function buildEmojiPicker(){
-  const picker=document.getElementById("emoji-picker");
-  emojis.forEach(e=>{const btn=document.createElement("button");btn.className="emoji-btn-pick";btn.textContent=e;btn.onclick=()=>{document.getElementById("msg-input").value+=e;};picker.appendChild(btn);});
+function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function autoResize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,110)+"px";}
+function buildEmoji(){
+  const p=document.getElementById("emoji-picker");
+  EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="ep";b.textContent=e;b.onclick=()=>{document.getElementById("msg-input").value+=e;};p.appendChild(b);});
 }
 function toggleEmoji(){emojiOpen=!emojiOpen;document.getElementById("emoji-picker").classList.toggle("show",emojiOpen);}
-document.addEventListener("click",e=>{if(!e.target.closest(".emoji-btn")&&!e.target.closest("#emoji-picker")){emojiOpen=false;document.getElementById("emoji-picker").classList.remove("show");}});
+document.addEventListener("click",e=>{if(!e.target.closest(".emj-btn")&&!e.target.closest("#emoji-picker")){emojiOpen=false;document.getElementById("emoji-picker").classList.remove("show");}});
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
-function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-window.addEventListener("resize",()=>{if(activeId)scrollBottom();});
-if(window.visualViewport){window.visualViewport.addEventListener("resize",()=>{if(activeId)scrollBottom();});}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+window.addEventListener("resize",()=>{if(activeId)scrollBot();});
 
-buildEmojiPicker();
-renderChatList();
-
-// Show Firebase connection status
-window.addEventListener("firebaseReady",()=>{
-  console.log("🔥 Firebase connecté à Bermax !");
-});
+// ══ INIT ════════════════════════════════════════════════════════════════
+buildEmoji();
+renderChats();
+renderContacts();
+applyTrans();
+// Toujours afficher l'écran de connexion
+document.getElementById("login").classList.remove("hidden");
 </script>
 </body>
 </html>
