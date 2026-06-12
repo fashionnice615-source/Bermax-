@@ -602,7 +602,14 @@ let delPending={cId:null,mId:null,from:null};
 const EMAILJS_PUBLIC_KEY="fksTp2OQ3uC_NZ8G_";
 const EMAILJS_SERVICE_ID="service_ors";
 const EMAILJS_TEMPLATE_ID="template_fssii4q";
-if(window.emailjs) emailjs.init(EMAILJS_PUBLIC_KEY);
+function ensureEmailJS(){
+  if(typeof emailjs === "undefined"){
+    console.error("EmailJS SDK non chargé");
+    return false;
+  }
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+  return true;
+}
 const EMOJIS=["😊","😂","❤️","👍","🙏","🔥","🎉","😢","😮","😡","🤔","👏","🥳","😎","💪","🌟","✅","🚀","💬","🎵"];
 const COLORS=["#6c3fc8","#d4842e","#2e7dd4","#c4425a","#2ea68a","#8a2ea6","#e05c2a","#1a8a6c"];
 
@@ -1037,6 +1044,11 @@ async function reqCode(){
   smsCode=Math.floor(100000+Math.random()*900000).toString();
   const btn=document.getElementById("req-btn");
   btn.textContent="📩 Envoi...";btn.disabled=true;
+  if(!ensureEmailJS()){
+    btn.textContent=t("lrc");btn.disabled=false;
+    showToast("❌ EmailJS non chargé. Vérifiez votre connexion.");
+    return;
+  }
   try{
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       email: email,
@@ -1046,9 +1058,10 @@ async function reqCode(){
     });
     showSmsPanel(email);showToast("✅ E-mail envoyé à "+email+" !");
   }catch(e){
-    console.error(e);
+    console.error("EmailJS error:", e);
     btn.textContent=t("lrc");btn.disabled=false;
-    showToast("❌ Erreur envoi e-mail");
+    const errMsg = e && e.text ? e.text : (e && e.message ? e.message : "inconnue");
+    showToast("❌ Erreur: "+errMsg);
   }
 }
 function showSmsPanel(phone){
@@ -1093,6 +1106,7 @@ function verifyCode(){
 }
 async function resendCode(){
   smsCode=Math.floor(100000+Math.random()*900000).toString();
+  if(!ensureEmailJS()){showToast("❌ EmailJS non chargé");return;}
   try{
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       email: pendEmail,
@@ -1104,7 +1118,11 @@ async function resendCode(){
     document.getElementById("cerr").classList.remove("show");
     document.getElementById("c0").focus();
     startCd();showToast("📩 Nouvel e-mail envoyé !");
-  }catch(e){showToast("❌ Erreur envoi e-mail");}
+  }catch(e){
+    console.error("EmailJS error:", e);
+    const errMsg = e && e.text ? e.text : (e && e.message ? e.message : "inconnue");
+    showToast("❌ Erreur: "+errMsg);
+  }
 }
 function backLogin(){
   clearInterval(cdTimer);smsCode="";
