@@ -288,7 +288,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
     <input type="file" id="cpic" accept="image/*" style="display:none" onchange="changeMyPic(this)"/>
     <h1>Bermax</h1>
     <button class="ic" onclick="openAddContact()">➕</button>
-    <button class="ic" onclick="showToast('⚙️ Paramètres')">⋮</button>
+    <button class="ic" onclick="showSettingsMenu()">⋮</button>
   </div>
 
   <!-- Discussions panel -->
@@ -412,6 +412,20 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <div><div id="del-all-txt">Supprimer pour tout le monde</div><div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;">Supprimé pour tous</div></div>
     </button>
     <button class="del-cancel" id="del-cancel-txt" onclick="closeDel()">Annuler</button>
+  </div>
+</div>
+
+<!-- SETTINGS MENU -->
+<div id="settings-modal" class="backdrop" onclick="closeSettings(event)">
+  <div class="sheet">
+    <div class="shandle"></div>
+    <div class="stitle" id="settings-account">Compte</div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:-6px;" id="settings-email"></div>
+    <button class="del-item danger" onclick="logout()">
+      <span class="dico">🚪</span>
+      <div><div>Se déconnecter</div></div>
+    </button>
+    <button class="del-cancel" onclick="closeSettings()">Fermer</button>
   </div>
 </div>
 
@@ -740,12 +754,6 @@ function sendMsg(){
   inp.value="";inp.style.height="auto";
   renderMsgs(c);renderChats(document.getElementById("search-inp").value);
   if(window._firebaseReady){const r=window._ref(window._db,"chats/"+activeId+"/msgs");window._push(r,{sender:myEmail||"demo",text,type:"text",time:getTime(),ts:Date.now(),read:false});}
-  setTimeout(()=>showTyping(c),800);
-  setTimeout(()=>{
-    const rep=["Bien sûr ! 😊","Super idée !","OK ! 👍","Haha 😂","Bonne nouvelle !","On en reparlera 😊"];
-    c.msgs.push({id:Date.now()+1,from:"them",text:rep[Math.floor(Math.random()*rep.length)],time:getTime(),read:false});
-    renderMsgs(c);renderChats(document.getElementById("search-inp").value);
-  },2200);
 }
 function sendFile(input){
   if(!input.files||!input.files[0]||!activeId)return;
@@ -801,15 +809,6 @@ function doDelAll(){
 }
 function ts(e,cId,mId,from){ttimer=setTimeout(()=>openDel(cId,mId,from),500);}
 function te(){clearTimeout(ttimer);}
-
-// ══ TYPING ══════════════════════════════════════════════════════════════
-function showTyping(c){
-  const box=document.getElementById("messages");
-  const div=document.createElement("div");div.className="msg them";div.id="tbbl";
-  div.innerHTML='<div class="bbl"><div class="typin"><span></span><span></span><span></span></div></div>';
-  box.appendChild(div);scrollBot();
-  setTimeout(()=>{const t=document.getElementById("tbbl");if(t)t.remove();},1400);
-}
 
 // ══ VOICE ═══════════════════════════════════════════════════════════════
 function startRec(){
@@ -999,15 +998,23 @@ function backLogin(){
 }
 function loginOk(){
   showToast("✅ Connecté avec "+myEmail+" !");
-  const av=document.getElementById("myav");
-  if(picData){av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;av.style.background="transparent";}
-  else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
+  applyAvatar();
+  // Save session so the user stays logged in
+  localStorage.setItem("bermax_email", myEmail);
+  localStorage.setItem("bermax_color", myColor);
+  if(picData) localStorage.setItem("bermax_pic", picData);
   if(window._firebaseReady){
     const safeId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
     const r=window._ref(window._db,"users/"+safeId);
     window._set(r,{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
   }
   setTimeout(()=>document.getElementById("login").classList.add("hidden"),700);
+}
+
+function applyAvatar(){
+  const av=document.getElementById("myav");
+  if(picData){av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;av.style.background="transparent";}
+  else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
 }
 
 // ══ MISC ════════════════════════════════════════════════════════════════
@@ -1034,8 +1041,35 @@ buildEmoji();
 renderChats();
 renderContacts();
 applyTrans();
-// Toujours afficher l'écran de connexion
-document.getElementById("login").classList.remove("hidden");
+
+// Vérifier si l'utilisateur est déjà connecté
+const savedEmail = localStorage.getItem("bermax_email");
+if(savedEmail){
+  myEmail = savedEmail;
+  myColor = localStorage.getItem("bermax_color") || "#25d366";
+  picData = localStorage.getItem("bermax_pic") || null;
+  applyAvatar();
+  document.getElementById("login").classList.add("hidden");
+} else {
+  document.getElementById("login").classList.remove("hidden");
+}
+
+function showSettingsMenu(){
+  document.getElementById("settings-email").textContent = myEmail;
+  document.getElementById("settings-modal").classList.add("show");
+}
+function closeSettings(e){
+  if(e&&e.target!==document.getElementById("settings-modal"))return;
+  document.getElementById("settings-modal").classList.remove("show");
+}
+
+// Déconnexion
+function logout(){
+  localStorage.removeItem("bermax_email");
+  localStorage.removeItem("bermax_color");
+  localStorage.removeItem("bermax_pic");
+  location.reload();
+}
 </script>
 </body>
 </html>
