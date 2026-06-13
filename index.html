@@ -1444,13 +1444,15 @@ function applyAvatar(){
   else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
 }
 
-// ══ APPELS (Jitsi Meet) ═══════════════════════════════════════════════════
+// ══ APPELS (8x8 JaaS / Jitsi) ═══════════════════════════════════════════════
+const JAAS_APP_ID = "vpaas-magic-cookie-bbd87ae8b4154919a6ab6cc9b195839b";
+
 function startCall(isVideo){
   if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
   const c=contacts.find(x=>x.id===activeId);
   if(!c)return;
   const chatId=getChatId(c.name);
-  const roomName="Bermax_"+chatId.replace(/[^a-zA-Z0-9]/g,"");
+  const roomName="Bermax"+chatId.replace(/[^a-zA-Z0-9]/g,"");
 
   // Notifie l\'autre utilisateur via Firebase qu\'un appel est en cours
   if(window._firebaseReady){
@@ -1471,7 +1473,8 @@ function openJitsi(roomName, isVideo, title){
     "interfaceConfig.SHOW_JITSI_WATERMARK": "false",
     "interfaceConfig.SHOW_WATERMARK_FOR_GUESTS": "false"
   });
-  frame.src = "https://meet.jit.si/"+roomName+"#"+params.toString();
+  // 8x8 JaaS sans JWT : salle publique accessible via l'App ID
+  frame.src = "https://8x8.vc/"+JAAS_APP_ID+"/"+roomName+"#"+params.toString();
   document.getElementById("call-title").textContent = (isVideo?"📹 ":"📞 ")+title;
   document.getElementById("call-modal").classList.add("show");
   window._activeCallChatId = currentCallChatId();
