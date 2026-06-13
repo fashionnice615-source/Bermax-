@@ -821,6 +821,42 @@ function saveContactToFirebase(contact){
 }
 
 // Charge la liste des contacts de l'utilisateur depuis Firebase (synchro multi-appareils)
+// ══ CACHE LOCAL (mode hors-ligne) ════════════════════════════════════════
+function saveCacheToLocal(){
+  if(!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  try{
+    localStorage.setItem("bermax_cache_contacts_"+myId, JSON.stringify(myContacts));
+    // Sauvegarde aussi les discussions (avec messages) pour lecture hors-ligne
+    const chatsData=contacts.map(c=>({
+      id:c.id,name:c.name,customName:c.customName||"",ini:c.ini,color:c.color,
+      pic:c.pic,status:c.status,unread:c.unread,msgs:c.msgs||[]
+    }));
+    localStorage.setItem("bermax_cache_chats_"+myId, JSON.stringify(chatsData));
+  }catch(e){console.error("Erreur sauvegarde cache:",e);}
+}
+
+function loadCacheFromLocal(){
+  if(!myEmail)return false;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  try{
+    const savedContacts=localStorage.getItem("bermax_cache_contacts_"+myId);
+    const savedChats=localStorage.getItem("bermax_cache_chats_"+myId);
+    if(savedContacts){
+      myContacts=JSON.parse(savedContacts);
+      renderContacts();
+    }
+    if(savedChats){
+      const chatsData=JSON.parse(savedChats);
+      chatsData.forEach(c=>{
+        if(!contacts.find(x=>x.id===c.id)) contacts.push(c);
+      });
+      renderChats(document.getElementById("search-inp").value);
+    }
+    return true;
+  }catch(e){console.error("Erreur lecture cache:",e);return false;}
+}
+
 function loadContactsFromFirebase(){
   if(!window._firebaseReady||!myEmail)return;
   const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
@@ -840,6 +876,7 @@ function loadContactsFromFirebase(){
       }
     });
     renderChats(document.getElementById("search-inp").value);
+    saveCacheToLocal();
     // S'abonner aux messages de chaque discussion pour afficher l'aperçu
     contacts.forEach(c=>subscribeToChat(c));
   });
@@ -866,6 +903,7 @@ function subscribeToChat(c){
     c.msgs=msgs;
     renderChats(document.getElementById("search-inp").value);
     if(activeId===c.id) renderMsgs(c);
+    saveCacheToLocal();
   });
 }
 
@@ -968,9 +1006,12 @@ function sendMsg(){
     const r=window._ref(window._db,"chats/"+chatId+"/msgs");
     window._push(r,{sender:myEmail,text,type:"text",time:getTime(),ts:Date.now(),read:false});
   }else{
-    // Fallback local-only if Firebase unavailable
-    c.msgs.push({id:Date.now(),from:"me",text,time:getTime(),read:false});
+    // Fallback local-only si hors-ligne : le message est gardé localement
+    // et sera visible une fois reconnecté (pas encore synchronisé)
+    c.msgs.push({id:"local_"+Date.now(),from:"me",text,time:getTime(),read:false,_pending:true});
     renderMsgs(c);renderChats(document.getElementById("search-inp").value);
+    saveCacheToLocal();
+    showToast("📴 Hors-ligne : message en attente d'envoi");
   }
 }
 function sendFile(input){
@@ -1314,7 +1355,9 @@ if(savedEmail){
   picData = localStorage.getItem("bermax_pic") || null;
   applyAvatar();
   document.getElementById("login").classList.add("hidden");
-  // Charger les discussions et contacts depuis Firebase (synchro multi-appareils)
+  // 1. Charger immédiatement depuis le cache local (fonctionne hors-ligne)
+  loadCacheFromLocal();
+  // 2. Puis se synchroniser avec Firebase si une connexion est disponible
   window.addEventListener("firebaseReady", loadContactsFromFirebase);
   if(window._firebaseReady) loadContactsFromFirebase();
 } else {
