@@ -433,6 +433,18 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   </div>
 </div>
 
+<!-- EDIT CONTACT NAME MODAL -->
+<div id="rename-modal" class="backdrop" onclick="closeRename(event)">
+  <div class="sheet">
+    <div class="shandle"></div>
+    <div class="stitle">✏️ Nom du contact</div>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:-6px;" id="rename-email"></p>
+    <input type="text" id="rename-input" placeholder="Ex: Maman, Jean Travail..." maxlength="30"/>
+    <button class="lbtn" onclick="saveRename()">✅ Enregistrer</button>
+    <button class="lbtn2" onclick="closeRename()">Annuler</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div id="login">
   <div class="lbox">
@@ -629,32 +641,75 @@ function switchNav(tab){
 }
 
 // ══ CONTACTS ═══════════════════════════════════════════════════════════
+function displayName(c){
+  return c.customName && c.customName.trim() ? c.customName.trim() : c.name;
+}
+
 function renderContacts(f){
   f=(f||"").toLowerCase();
   const list=document.getElementById("contacts-list");
   list.innerHTML="";
-  const fl=myContacts.filter(c=>c.name.toLowerCase().includes(f)||(c.phone||"").includes(f));
+  const fl=myContacts.filter(c=>displayName(c).toLowerCase().includes(f)||(c.phone||"").includes(f));
   if(!fl.length){
     list.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px;">Aucun contact<br/><br/>Appuie sur ➕ pour ajouter un contact via son e-mail</div>';
     return;
   }
-  const sorted=[...fl].sort((a,b)=>a.name.localeCompare(b.name));
+  const sorted=[...fl].sort((a,b)=>displayName(a).localeCompare(displayName(b)));
   let cur="";
   sorted.forEach(c=>{
-    const l=c.name[0].toUpperCase();
+    const dn=displayName(c);
+    const l=dn[0].toUpperCase();
     if(l!==cur){cur=l;const d=document.createElement("div");d.className="cletter";d.textContent=l;list.appendChild(d);}
     const div=document.createElement("div");div.className="citem";
-    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : c.ini;
-    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.online?'<div class="dot"></div>':''}</div><div style="flex:1;min-width:0;"><div class="cname">${c.name}</div><div class="cphone">${c.phone||""}</div></div><button class="cmsg-btn" onclick="startChatContact('${c.id}')">💬</button>`;
+    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : (c.customName? c.customName.split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase() : c.ini);
+    const subText = c.customName ? c.name : (c.phone||"");
+    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.online?'<div class="dot"></div>':''}</div><div style="flex:1;min-width:0;"><div class="cname">${dn}</div><div class="cphone">${subText}</div></div><button class="ic" onclick="openRename('${c.id}')" title="Modifier le nom">✏️</button><button class="cmsg-btn" onclick="startChatContact('${c.id}')">💬</button>`;
     list.appendChild(div);
   });
 }
 function filterContacts(v){renderContacts(v);}
+function openRename(id){
+  const c=myContacts.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById("rename-modal").dataset.contactId=id;
+  document.getElementById("rename-email").textContent=c.name;
+  document.getElementById("rename-input").value=c.customName||"";
+  document.getElementById("rename-modal").classList.add("show");
+  document.getElementById("rename-input").focus();
+}
+function closeRename(e){
+  if(e&&e.target!==document.getElementById("rename-modal"))return;
+  document.getElementById("rename-modal").classList.remove("show");
+}
+function saveRename(){
+  const id=document.getElementById("rename-modal").dataset.contactId;
+  const newName=document.getElementById("rename-input").value.trim();
+  const c=myContacts.find(x=>x.id===id);
+  if(!c)return;
+  c.customName=newName;
+  // Sync to Firebase
+  if(window._firebaseReady&&myEmail){
+    const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+    const r=window._ref(window._db,"users/"+myId+"/contacts/"+id+"/customName");
+    window._set(r,newName);
+  }
+  // Update the discussion list display too
+  const chatC=contacts.find(x=>x.id===id);
+  if(chatC) chatC.customName=newName;
+  renderContacts();
+  renderChats(document.getElementById("search-inp").value);
+  if(activeId===id){
+    document.getElementById("hname").textContent=displayName(c);
+  }
+  document.getElementById("rename-modal").classList.remove("show");
+  showToast(newName ? "✅ Nom enregistré : "+newName : "✅ Nom réinitialisé");
+}
+
 function startChatContact(id){
   switchNav("chats");
   const c=myContacts.find(x=>x.id===id);
   if(!c)return;
-  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
+  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,customName:c.customName||"",ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
   renderChats();openChat(id);
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
 }
@@ -778,7 +833,10 @@ function loadContactsFromFirebase(){
     // Initialise les discussions à partir des contacts retrouvés
     list.forEach(c=>{
       if(!contacts.find(x=>x.id===c.id)){
-        contacts.push({id:c.id,name:c.name,ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});
+        contacts.push({id:c.id,name:c.name,customName:c.customName||"",ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});
+      }else{
+        const existing=contacts.find(x=>x.id===c.id);
+        existing.customName=c.customName||existing.customName;
       }
     });
     renderChats(document.getElementById("search-inp").value);
@@ -816,7 +874,7 @@ function renderChats(f){
   f=(f||"").toLowerCase();
   const list=document.getElementById("chat-list");
   list.innerHTML="";
-  const filtered = contacts.filter(c=>c.name.toLowerCase().includes(f));
+  const filtered = contacts.filter(c=>displayName(c).toLowerCase().includes(f));
   if(!filtered.length){
     list.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px 20px;font-size:13px;line-height:1.6;">Aucune discussion.<br/><br/>Va dans 👥 Contacts et ajoute quelqu\'un via son e-mail pour commencer à discuter !</div>';
     return;
@@ -827,8 +885,9 @@ function renderChats(f){
     div.className="ci"+(c.id===activeId?" active":"");
     div.onclick=()=>openChat(c.id);
     const prev=last?(last.deleted_all?"🚫 Supprimé":last.from==="me"?"Vous : "+last.text:last.text):"Démarrer la conversation";
-    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : c.ini;
-    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.status==="En ligne"?'<div class="dot"></div>':''}</div><div class="cm"><div class="cn">${c.name}</div><div class="cp">${prev}</div></div><div class="ci-right"><div class="ct">${last?last.time:""}</div>${c.unread?`<div class="bdg">${c.unread}</div>`:""}</div>`;
+    const dn=displayName(c);
+    const avContent = c.pic ? `<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>` : (c.customName? c.customName.split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase() : c.ini);
+    div.innerHTML=`<div class="av" style="background:${c.color}">${avContent}${c.status==="En ligne"?'<div class="dot"></div>':''}</div><div class="cm"><div class="cn">${dn}</div><div class="cp">${prev}</div></div><div class="ci-right"><div class="ct">${last?last.time:""}</div>${c.unread?`<div class="bdg">${c.unread}</div>`:""}</div>`;
     list.appendChild(div);
   });
 }
@@ -847,7 +906,7 @@ function openChat(id){
   if(!c.msgs) c.msgs=[];
   c.unread=0;
   renderChats(document.getElementById("search-inp").value);
-  document.getElementById("hname").textContent=c.name;
+  document.getElementById("hname").textContent=displayName(c);
   document.getElementById("hstatus").textContent=c.status;
   const hav=document.getElementById("hav");
   hav.style.background=c.color;
