@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Permissions-Policy" content="camera=*, microphone=*"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <title>Bermax</title>
@@ -1496,13 +1497,26 @@ async function startCall(video){
 
   // Obtenir le flux local
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      showToast("❌ Micro/caméra non supporté sur ce navigateur");
+      hideCallUI();return;
+    }
     localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:isVideo});
     if(isVideo){
       const lv=document.getElementById("local-video");
       lv.srcObject=localStream;lv.style.display="block";
     }
   }catch(e){
-    showToast("❌ Accès micro/caméra refusé");
+    console.error("getUserMedia error:",e.name,e.message);
+    if(e.name==="NotAllowedError"||e.name==="PermissionDeniedError"){
+      showToast("❌ Permission refusée — autorise le micro dans les paramètres");
+    }else if(e.name==="NotFoundError"){
+      showToast("❌ Micro/caméra introuvable sur cet appareil");
+    }else if(e.name==="NotReadableError"){
+      showToast("❌ Micro/caméra utilisé par une autre app");
+    }else{
+      showToast("❌ Erreur : "+e.name+" - "+e.message);
+    }
     hideCallUI();return;
   }
 
@@ -1598,12 +1612,26 @@ async function acceptIncomingCall(){
   document.getElementById("call-status").textContent="Connexion...";
 
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      showToast("❌ Micro/caméra non supporté sur ce navigateur");
+      hideCallUI();return;
+    }
     localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:isVideo});
     if(isVideo){
       const lv=document.getElementById("local-video");
       lv.srcObject=localStream;lv.style.display="block";
     }
-  }catch(e){showToast("❌ Accès micro/caméra refusé");hideCallUI();return;}
+  }catch(e){
+    console.error("getUserMedia error:",e.name,e.message);
+    if(e.name==="NotAllowedError"||e.name==="PermissionDeniedError"){
+      showToast("❌ Permission refusée — autorise le micro dans les paramètres");
+    }else if(e.name==="NotFoundError"){
+      showToast("❌ Micro/caméra introuvable sur cet appareil");
+    }else{
+      showToast("❌ Erreur : "+e.name+" - "+e.message);
+    }
+    hideCallUI();return;
+  }
 
   peerConn=new RTCPeerConnection(ICE_SERVERS);
   localStream.getTracks().forEach(t=>peerConn.addTrack(t,localStream));
