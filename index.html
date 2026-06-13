@@ -271,13 +271,21 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   #back-btn{display:block;}
 }
 
-/* CALL MODAL (Jitsi) */
-#call-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:8000;flex-direction:column;}
+/* CALL MODAL (WebRTC) */
+#call-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a2e;z-index:8000;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #call-modal.show{display:flex;}
-#call-header{background:#1c2a38;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-#call-header h3{flex:1;font-size:15px;font-weight:700;color:#fff;}
-#call-close{background:#dc2626;border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-#jitsi-frame{flex:1;border:none;width:100%;height:100%;}
+#call-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#fff;box-shadow:0 0 0 12px rgba(37,211,102,.15),0 0 0 24px rgba(37,211,102,.07);}
+#call-name{font-size:22px;font-weight:800;color:#fff;}
+#call-status{font-size:14px;color:#aaa;}
+.call-actions{display:flex;gap:24px;margin-top:16px;}
+.call-action-btn{width:60px;height:60px;border-radius:50%;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+.call-action-btn:active{transform:scale(.9);}
+#btn-mute{background:#2a2a3e;}
+#btn-cam{background:#2a2a3e;}
+#btn-hangup{background:#dc2626;}
+#btn-accept{background:#25d366;}
+#remote-video{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-1;display:none;}
+#local-video{position:fixed;bottom:100px;right:14px;width:100px;height:140px;border-radius:14px;object-fit:cover;z-index:1;border:2px solid #fff;display:none;}
 
 /* TOAST */
 #toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ac);color:#000;font-weight:700;padding:9px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;}
@@ -388,13 +396,33 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   </div>
 </div>
 
-<!-- CALL MODAL (Jitsi) -->
+<!-- CALL MODAL (WebRTC) -->
 <div id="call-modal">
-  <div id="call-header">
-    <h3 id="call-title">Appel</h3>
-    <button id="call-close" onclick="endCall()">✕</button>
+  <video id="remote-video" autoplay playsinline></video>
+  <video id="local-video" autoplay playsinline muted></video>
+  <div id="call-avatar">?</div>
+  <div id="call-name">Appel</div>
+  <div id="call-status">Connexion...</div>
+  <div class="call-actions" id="call-actions-ongoing" style="display:none;">
+    <button class="call-action-btn" id="btn-mute" onclick="toggleMicCall()" title="Micro">🎤</button>
+    <button class="call-action-btn" id="btn-cam" onclick="toggleCamCall()" title="Caméra">📷</button>
+    <button class="call-action-btn" id="btn-hangup" onclick="endCall()">📵</button>
   </div>
-  <iframe id="jitsi-frame" allow="camera; microphone; display-capture; autoplay; clipboard-write"></iframe>
+  <div class="call-actions" id="call-actions-incoming" style="display:none;">
+    <button class="call-action-btn" id="btn-accept" onclick="acceptIncomingCall()">✅</button>
+    <button class="call-action-btn" id="btn-hangup2" onclick="rejectCall()">📵</button>
+  </div>
+</div>
+
+<!-- INCOMING CALL BANNER -->
+<div id="incoming-banner" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1a4d2e;border:2px solid var(--ac);border-radius:16px;padding:12px 18px;z-index:9000;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:90%;">
+  <span id="incoming-icon" style="font-size:24px;">📞</span>
+  <div style="flex:1;color:#fff;">
+    <div style="font-size:13px;font-weight:700;" id="incoming-label">Appel entrant</div>
+    <div style="font-size:11px;color:#aaa;" id="incoming-from"></div>
+  </div>
+  <button style="background:var(--ac);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;" onclick="showIncomingCallUI()">✅</button>
+  <button style="background:#dc2626;border:none;border-radius:50%;width:38px;height:38px;font-size:16px;cursor:pointer;color:#fff;" onclick="rejectCall()">✕</button>
 </div>
 
 <!-- LANGUAGE MODAL -->
@@ -1444,98 +1472,224 @@ function applyAvatar(){
   else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
 }
 
-// ══ APPELS (8x8 JaaS / Jitsi) ═══════════════════════════════════════════════
-const JAAS_APP_ID = "vpaas-magic-cookie-bbd87ae8b4154919a6ab6cc9b195839b";
+// ══ APPELS WebRTC via Firebase Signaling ══════════════════════════════════
+let localStream=null, peerConn=null, isVideo=false;
+let callChatId=null, isCaller=false, incomingCallData=null;
+let micMuted=false, camOff=false;
 
-function startCall(isVideo){
+const ICE_SERVERS={iceServers:[
+  {urls:"stun:stun.l.google.com:19302"},
+  {urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:stun2.l.google.com:19302"},
+]};
+
+async function startCall(video){
   if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
   const c=contacts.find(x=>x.id===activeId);
   if(!c)return;
-  const chatId=getChatId(c.name);
-  const roomName="Bermax"+chatId.replace(/[^a-zA-Z0-9]/g,"");
+  isVideo=video;
+  isCaller=true;
+  callChatId=getChatId(c.name);
 
-  // Notifie l\'autre utilisateur via Firebase qu\'un appel est en cours
+  // Afficher l\'UI d\'appel
+  showCallUI(displayName(c), isVideo?"📹 Appel vidéo":"📞 Appel vocal", "Appel en cours...", false);
+
+  // Obtenir le flux local
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:isVideo});
+    if(isVideo){
+      const lv=document.getElementById("local-video");
+      lv.srcObject=localStream;lv.style.display="block";
+    }
+  }catch(e){
+    showToast("❌ Accès micro/caméra refusé");
+    hideCallUI();return;
+  }
+
+  // Créer la connexion WebRTC
+  peerConn=new RTCPeerConnection(ICE_SERVERS);
+  localStream.getTracks().forEach(t=>peerConn.addTrack(t,localStream));
+
+  peerConn.ontrack=e=>{
+    const rv=document.getElementById("remote-video");
+    rv.srcObject=e.streams[0];rv.style.display="block";
+  };
+
+  peerConn.onicecandidate=e=>{
+    if(e.candidate&&window._firebaseReady){
+      const r=window._ref(window._db,"calls/"+callChatId+"/callerCandidates");
+      window._push(r,JSON.stringify(e.candidate.toJSON()));
+    }
+  };
+
+  // Créer et envoyer l\'offre SDP
+  const offer=await peerConn.createOffer();
+  await peerConn.setLocalDescription(offer);
+
   if(window._firebaseReady){
-    const r=window._ref(window._db,"chats/"+chatId+"/call");
-    window._set(r,{from:myEmail,room:roomName,video:isVideo,ts:Date.now(),active:true});
+    const r=window._ref(window._db,"calls/"+callChatId);
+    window._set(r,{
+      from:myEmail, fromName:myEmail,
+      offer:JSON.stringify(offer),
+      video:isVideo, ts:Date.now(), active:true
+    });
+    // Écouter la réponse (answer)
+    const answerRef=window._ref(window._db,"calls/"+callChatId+"/answer");
+    window._onValue(answerRef,async snap=>{
+      const ans=snap.val();
+      if(ans&&peerConn&&!peerConn.remoteDescription){
+        await peerConn.setRemoteDescription(JSON.parse(ans));
+        document.getElementById("call-status").textContent="🔴 En appel";
+        document.getElementById("call-actions-ongoing").style.display="flex";
+      }
+    });
+    // Écouter les ICE candidates du destinataire
+    const calleeCandRef=window._ref(window._db,"calls/"+callChatId+"/calleeCandidates");
+    window._onValue(calleeCandRef,snap=>{
+      snap.forEach(child=>{
+        const cand=JSON.parse(child.val());
+        if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(cand)).catch(()=>{});
+      });
+    });
   }
-
-  openJitsi(roomName, isVideo, displayName(c));
-}
-
-function openJitsi(roomName, isVideo, title){
-  const frame=document.getElementById("jitsi-frame");
-  const params=new URLSearchParams({
-    "userInfo.displayName": myEmail || "Utilisateur Bermax",
-    "config.startWithVideoMuted": isVideo ? "false" : "true",
-    "config.startWithAudioMuted": "false",
-    "config.prejoinPageEnabled": "false",
-    "interfaceConfig.SHOW_JITSI_WATERMARK": "false",
-    "interfaceConfig.SHOW_WATERMARK_FOR_GUESTS": "false"
-  });
-  // 8x8 JaaS sans JWT : salle publique accessible via l'App ID
-  frame.src = "https://8x8.vc/"+JAAS_APP_ID+"/"+roomName+"#"+params.toString();
-  document.getElementById("call-title").textContent = (isVideo?"📹 ":"📞 ")+title;
-  document.getElementById("call-modal").classList.add("show");
-  window._activeCallChatId = currentCallChatId();
-}
-
-function currentCallChatId(){
-  const c=contacts.find(x=>x.id===activeId);
-  return c ? getChatId(c.name) : null;
-}
-
-function endCall(){
-  document.getElementById("call-modal").classList.remove("show");
-  document.getElementById("jitsi-frame").src="";
-  // Marque l\'appel comme terminé dans Firebase
-  if(window._firebaseReady && window._activeCallChatId){
-    const r=window._ref(window._db,"chats/"+window._activeCallChatId+"/call");
-    window._update(r,{active:false});
-  }
-  window._activeCallChatId=null;
+  document.getElementById("call-actions-ongoing").style.display="flex";
 }
 
 // Écoute les appels entrants pour un contact donné
 function subscribeToCalls(c){
   if(!window._firebaseReady)return;
   const chatId=getChatId(c.name);
-  const r=window._ref(window._db,"chats/"+chatId+"/call");
+  const r=window._ref(window._db,"calls/"+chatId);
   window._onValue(r,snap=>{
     const data=snap.val();
     if(!data||!data.active)return;
-    if(data.from===myEmail)return; // c\'est nous qui avons lancé l\'appel
-    // Évite de re-déclencher la même notification
+    if(data.from===myEmail)return;
     if(c._lastCallTs===data.ts)return;
     c._lastCallTs=data.ts;
-    showIncomingCall(c, data);
+    incomingCallData={c, data, chatId};
+    showIncomingBanner(c, data);
   });
 }
 
-function showIncomingCall(c, data){
-  const icon=data.video?"📹":"📞";
-  const label=data.video?"Appel vidéo":"Appel vocal";
-  const banner=document.createElement("div");
-  banner.style.cssText="position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1a4d2e;border:2px solid var(--ac);border-radius:16px;padding:12px 18px;z-index:9000;display:flex;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:90%;";
-  banner.innerHTML=`
-    <span style="font-size:24px;">${icon}</span>
-    <div style="flex:1;color:#fff;font-size:13px;font-weight:700;">${label} de ${displayName(c)}</div>
-    <button style="background:var(--ac);border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="acceptCall('${c.id}','${data.room}',${data.video})">✅</button>
-    <button style="background:#dc2626;border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;color:#fff;" onclick="this.closest('div').remove()">✕</button>
-  `;
-  document.body.appendChild(banner);
-  setTimeout(()=>{if(banner.parentNode)banner.remove();},20000);
+function showIncomingBanner(c, data){
+  const banner=document.getElementById("incoming-banner");
+  document.getElementById("incoming-icon").textContent=data.video?"📹":"📞";
+  document.getElementById("incoming-label").textContent=data.video?"Appel vidéo entrant":"Appel vocal entrant";
+  document.getElementById("incoming-from").textContent=displayName(c);
+  banner.style.display="flex";
+  setTimeout(()=>{banner.style.display="none";},20000);
 }
 
-function acceptCall(contactId, room, isVideo){
-  document.querySelectorAll("body > div").forEach(d=>{
-    if(d.style.position==="fixed" && d.style.zIndex==="9000") d.remove();
-  });
-  const c=contacts.find(x=>x.id===contactId);
-  if(!c)return;
-  activeId=contactId;
-  openChat(contactId);
-  openJitsi(room, isVideo, displayName(c));
+function showIncomingCallUI(){
+  document.getElementById("incoming-banner").style.display="none";
+  if(!incomingCallData)return;
+  const {c,data}=incomingCallData;
+  showCallUI(displayName(c), data.video?"📹 Appel vidéo":"📞 Appel vocal", "Appel entrant...", true);
+}
+
+async function acceptIncomingCall(){
+  if(!incomingCallData)return;
+  const {c,data,chatId}=incomingCallData;
+  isCaller=false;
+  callChatId=chatId;
+  isVideo=data.video;
+
+  document.getElementById("call-actions-incoming").style.display="none";
+  document.getElementById("call-status").textContent="Connexion...";
+
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:isVideo});
+    if(isVideo){
+      const lv=document.getElementById("local-video");
+      lv.srcObject=localStream;lv.style.display="block";
+    }
+  }catch(e){showToast("❌ Accès micro/caméra refusé");hideCallUI();return;}
+
+  peerConn=new RTCPeerConnection(ICE_SERVERS);
+  localStream.getTracks().forEach(t=>peerConn.addTrack(t,localStream));
+
+  peerConn.ontrack=e=>{
+    const rv=document.getElementById("remote-video");
+    rv.srcObject=e.streams[0];rv.style.display="block";
+  };
+
+  peerConn.onicecandidate=e=>{
+    if(e.candidate&&window._firebaseReady){
+      const r=window._ref(window._db,"calls/"+callChatId+"/calleeCandidates");
+      window._push(r,JSON.stringify(e.candidate.toJSON()));
+    }
+  };
+
+  await peerConn.setRemoteDescription(JSON.parse(data.offer));
+  const answer=await peerConn.createAnswer();
+  await peerConn.setLocalDescription(answer);
+
+  if(window._firebaseReady){
+    const r=window._ref(window._db,"calls/"+callChatId+"/answer");
+    window._set(r,JSON.stringify(answer));
+    // Écouter les ICE candidates de l\'appelant
+    const callerCandRef=window._ref(window._db,"calls/"+callChatId+"/callerCandidates");
+    window._onValue(callerCandRef,snap=>{
+      snap.forEach(child=>{
+        const cand=JSON.parse(child.val());
+        if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(cand)).catch(()=>{});
+      });
+    });
+  }
+  document.getElementById("call-actions-ongoing").style.display="flex";
+  document.getElementById("call-status").textContent="🔴 En appel";
+}
+
+function rejectCall(){
+  document.getElementById("incoming-banner").style.display="none";
+  hideCallUI();
+  incomingCallData=null;
+  if(callChatId&&window._firebaseReady){
+    window._update(window._ref(window._db,"calls/"+callChatId),{active:false});
+  }
+}
+
+function endCall(){
+  if(localStream)localStream.getTracks().forEach(t=>t.stop());
+  if(peerConn)peerConn.close();
+  localStream=null;peerConn=null;
+  if(callChatId&&window._firebaseReady){
+    window._set(window._ref(window._db,"calls/"+callChatId),{active:false});
+  }
+  callChatId=null;incomingCallData=null;
+  hideCallUI();
+}
+
+function showCallUI(name, title, status, incoming){
+  const av=document.getElementById("call-avatar");
+  av.textContent=name?name[0].toUpperCase():"?";
+  document.getElementById("call-name").textContent=name;
+  document.getElementById("call-status").textContent=status;
+  document.getElementById("call-actions-ongoing").style.display=incoming?"none":"flex";
+  document.getElementById("call-actions-incoming").style.display=incoming?"flex":"none";
+  document.getElementById("call-modal").classList.add("show");
+}
+
+function hideCallUI(){
+  document.getElementById("call-modal").classList.remove("show");
+  document.getElementById("remote-video").style.display="none";
+  document.getElementById("local-video").style.display="none";
+  document.getElementById("remote-video").srcObject=null;
+  document.getElementById("local-video").srcObject=null;
+  document.getElementById("call-actions-ongoing").style.display="none";
+  document.getElementById("call-actions-incoming").style.display="none";
+}
+
+function toggleMicCall(){
+  micMuted=!micMuted;
+  if(localStream)localStream.getAudioTracks().forEach(t=>t.enabled=!micMuted);
+  document.getElementById("btn-mute").textContent=micMuted?"🔇":"🎤";
+}
+
+function toggleCamCall(){
+  camOff=!camOff;
+  if(localStream)localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);
+  document.getElementById("btn-cam").textContent=camOff?"📵":"📷";
 }
 
 // ══ MISC ════════════════════════════════════════════════════════════════
