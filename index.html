@@ -271,6 +271,14 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   #back-btn{display:block;}
 }
 
+/* CALL MODAL (Jitsi) */
+#call-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:8000;flex-direction:column;}
+#call-modal.show{display:flex;}
+#call-header{background:#1c2a38;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+#call-header h3{flex:1;font-size:15px;font-weight:700;color:#fff;}
+#call-close{background:#dc2626;border:none;color:#fff;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#jitsi-frame{flex:1;border:none;width:100%;height:100%;}
+
 /* TOAST */
 #toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ac);color:#000;font-weight:700;padding:9px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -342,8 +350,8 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
         <span id="hstatus">En ligne</span>
       </div>
       <div class="hact">
-        <button class="call-btn" onclick="showToast('📞 Appel vocal...')">📞</button>
-        <button class="vid-btn" onclick="showToast('📹 Appel vidéo...')">📹</button>
+        <button class="call-btn" onclick="startCall(false)">📞</button>
+        <button class="vid-btn" onclick="startCall(true)">📹</button>
         <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔔</button>
         <button class="ic" onclick="showToast('⚙️ Options')">⋮</button>
       </div>
@@ -378,6 +386,15 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       </div>
     </div>
   </div>
+</div>
+
+<!-- CALL MODAL (Jitsi) -->
+<div id="call-modal">
+  <div id="call-header">
+    <h3 id="call-title">Appel</h3>
+    <button id="call-close" onclick="endCall()">✕</button>
+  </div>
+  <iframe id="jitsi-frame" allow="camera; microphone; display-capture; autoplay; clipboard-write"></iframe>
 </div>
 
 <!-- LANGUAGE MODAL -->
@@ -716,6 +733,7 @@ function startChatContact(id){
     contacts.unshift(newChat);
     subscribeToPresence(newChat);
     subscribeToReadStatus(newChat);
+    subscribeToCalls(newChat);
   }
   renderChats();openChat(id);
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
@@ -884,11 +902,12 @@ function loadContactsFromFirebase(){
     });
     renderChats(document.getElementById("search-inp").value);
     saveCacheToLocal();
-    // S'abonner aux messages, à la présence et au statut de lecture de chaque contact
+    // S'abonner aux messages, à la présence, au statut de lecture et aux appels
     contacts.forEach(c=>{
       subscribeToChat(c);
       subscribeToPresence(c);
       subscribeToReadStatus(c);
+      subscribeToCalls(c);
     });
   });
 }
@@ -1423,6 +1442,97 @@ function applyAvatar(){
   const av=document.getElementById("myav");
   if(picData){av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;av.style.background="transparent";}
   else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
+}
+
+// ══ APPELS (Jitsi Meet) ═══════════════════════════════════════════════════
+function startCall(isVideo){
+  if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
+  const c=contacts.find(x=>x.id===activeId);
+  if(!c)return;
+  const chatId=getChatId(c.name);
+  const roomName="Bermax_"+chatId.replace(/[^a-zA-Z0-9]/g,"");
+
+  // Notifie l\'autre utilisateur via Firebase qu\'un appel est en cours
+  if(window._firebaseReady){
+    const r=window._ref(window._db,"chats/"+chatId+"/call");
+    window._set(r,{from:myEmail,room:roomName,video:isVideo,ts:Date.now(),active:true});
+  }
+
+  openJitsi(roomName, isVideo, displayName(c));
+}
+
+function openJitsi(roomName, isVideo, title){
+  const frame=document.getElementById("jitsi-frame");
+  const params=new URLSearchParams({
+    "userInfo.displayName": myEmail || "Utilisateur Bermax",
+    "config.startWithVideoMuted": isVideo ? "false" : "true",
+    "config.startWithAudioMuted": "false",
+    "config.prejoinPageEnabled": "false",
+    "interfaceConfig.SHOW_JITSI_WATERMARK": "false",
+    "interfaceConfig.SHOW_WATERMARK_FOR_GUESTS": "false"
+  });
+  frame.src = "https://meet.jit.si/"+roomName+"#"+params.toString();
+  document.getElementById("call-title").textContent = (isVideo?"📹 ":"📞 ")+title;
+  document.getElementById("call-modal").classList.add("show");
+  window._activeCallChatId = currentCallChatId();
+}
+
+function currentCallChatId(){
+  const c=contacts.find(x=>x.id===activeId);
+  return c ? getChatId(c.name) : null;
+}
+
+function endCall(){
+  document.getElementById("call-modal").classList.remove("show");
+  document.getElementById("jitsi-frame").src="";
+  // Marque l\'appel comme terminé dans Firebase
+  if(window._firebaseReady && window._activeCallChatId){
+    const r=window._ref(window._db,"chats/"+window._activeCallChatId+"/call");
+    window._update(r,{active:false});
+  }
+  window._activeCallChatId=null;
+}
+
+// Écoute les appels entrants pour un contact donné
+function subscribeToCalls(c){
+  if(!window._firebaseReady)return;
+  const chatId=getChatId(c.name);
+  const r=window._ref(window._db,"chats/"+chatId+"/call");
+  window._onValue(r,snap=>{
+    const data=snap.val();
+    if(!data||!data.active)return;
+    if(data.from===myEmail)return; // c\'est nous qui avons lancé l\'appel
+    // Évite de re-déclencher la même notification
+    if(c._lastCallTs===data.ts)return;
+    c._lastCallTs=data.ts;
+    showIncomingCall(c, data);
+  });
+}
+
+function showIncomingCall(c, data){
+  const icon=data.video?"📹":"📞";
+  const label=data.video?"Appel vidéo":"Appel vocal";
+  const banner=document.createElement("div");
+  banner.style.cssText="position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1a4d2e;border:2px solid var(--ac);border-radius:16px;padding:12px 18px;z-index:9000;display:flex;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:90%;";
+  banner.innerHTML=`
+    <span style="font-size:24px;">${icon}</span>
+    <div style="flex:1;color:#fff;font-size:13px;font-weight:700;">${label} de ${displayName(c)}</div>
+    <button style="background:var(--ac);border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="acceptCall('${c.id}','${data.room}',${data.video})">✅</button>
+    <button style="background:#dc2626;border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;color:#fff;" onclick="this.closest('div').remove()">✕</button>
+  `;
+  document.body.appendChild(banner);
+  setTimeout(()=>{if(banner.parentNode)banner.remove();},20000);
+}
+
+function acceptCall(contactId, room, isVideo){
+  document.querySelectorAll("body > div").forEach(d=>{
+    if(d.style.position==="fixed" && d.style.zIndex==="9000") d.remove();
+  });
+  const c=contacts.find(x=>x.id===contactId);
+  if(!c)return;
+  activeId=contactId;
+  openChat(contactId);
+  openJitsi(room, isVideo, displayName(c));
 }
 
 // ══ MISC ════════════════════════════════════════════════════════════════
