@@ -112,26 +112,28 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 .mute-btn.muted{background:#4d1a1a;}
 
 /* MESSAGES */
-#messages{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:5px;min-height:0;}
+#messages{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:5px;min-height:0;background:#e9edef;}
 #messages::-webkit-scrollbar{width:4px;}
 #messages::-webkit-scrollbar-thumb{background:var(--br);border-radius:4px;}
-.dlabel{text-align:center;font-size:11px;color:var(--muted);background:var(--hd);border-radius:12px;padding:3px 12px;margin:6px auto;width:fit-content;}
+.dlabel{text-align:center;font-size:11px;color:#54656f;background:#ffffff;border-radius:12px;padding:3px 12px;margin:6px auto;width:fit-content;box-shadow:0 1px 1px rgba(0,0,0,.08);}
 .msg{display:flex;flex-direction:column;max-width:72%;animation:fup .2s ease;position:relative;}
 @keyframes fup{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
 .msg.me{align-self:flex-end;align-items:flex-end;}
 .msg.them{align-self:flex-start;align-items:flex-start;}
 .bbl{padding:8px 12px;border-radius:17px;font-size:14px;line-height:1.5;word-break:break-word;}
-.msg.me .bbl{background:var(--bme);border-bottom-right-radius:4px;}
-.msg.them .bbl{background:var(--bthem);border-bottom-left-radius:4px;}
-.mt{font-size:11px;color:var(--muted);margin-top:2px;padding:0 3px;display:flex;align-items:center;gap:3px;}
+.msg.me .bbl{background:#d9fdd3;border-bottom-right-radius:4px;color:#111b21;}
+.msg.them .bbl{background:#ffffff;border-bottom-left-radius:4px;color:#111b21;box-shadow:0 1px 1px rgba(0,0,0,.08);}
+.mt{font-size:11px;color:#667781;margin-top:2px;padding:0 3px;display:flex;align-items:center;gap:3px;}
 .msg.me .mt{justify-content:flex-end;}
-.tick{font-size:12px;}
+.tick{font-size:12px;color:#8696a0;}
+.tick.sent{color:#8696a0;}
+.tick.delivered{color:#8696a0;}
 .tick.read{color:#53bdeb;}
 .bbl img{max-width:200px;max-height:200px;border-radius:11px;display:block;cursor:pointer;}
 .bbl video{max-width:200px;border-radius:11px;display:block;}
 .bbl audio{width:180px;height:32px;border-radius:18px;outline:none;}
-.del-msg{font-style:italic;color:var(--muted);font-size:13px;}
-.dbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;border-radius:7px;opacity:0;transition:opacity .2s;}
+.del-msg{font-style:italic;color:#8696a0;font-size:13px;}
+.dbtn{background:none;border:none;color:#667781;font-size:13px;cursor:pointer;padding:2px 4px;border-radius:7px;opacity:0;transition:opacity .2s;}
 .msg:hover .dbtn{opacity:1;}
 
 /* TYPING */
@@ -709,7 +711,12 @@ function startChatContact(id){
   switchNav("chats");
   const c=myContacts.find(x=>x.id===id);
   if(!c)return;
-  if(!contacts.find(x=>x.id===id)){contacts.unshift({id,name:c.name,customName:c.customName||"",ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0});}
+  if(!contacts.find(x=>x.id===id)){
+    const newChat={id,name:c.name,customName:c.customName||"",ini:c.ini,color:c.color,pic:c.pic,status:c.online?"En ligne":"Hors ligne",msgs:[],unread:0};
+    contacts.unshift(newChat);
+    subscribeToPresence(newChat);
+    subscribeToReadStatus(newChat);
+  }
   renderChats();openChat(id);
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
 }
@@ -877,8 +884,12 @@ function loadContactsFromFirebase(){
     });
     renderChats(document.getElementById("search-inp").value);
     saveCacheToLocal();
-    // S'abonner aux messages de chaque discussion pour afficher l'aperçu
-    contacts.forEach(c=>subscribeToChat(c));
+    // S'abonner aux messages, à la présence et au statut de lecture de chaque contact
+    contacts.forEach(c=>{
+      subscribeToChat(c);
+      subscribeToPresence(c);
+      subscribeToReadStatus(c);
+    });
   });
 }
 
@@ -902,7 +913,7 @@ function subscribeToChat(c){
     });
     c.msgs=msgs;
     renderChats(document.getElementById("search-inp").value);
-    if(activeId===c.id) renderMsgs(c);
+    if(activeId===c.id){renderMsgs(c);markChatAsRead(c);}
     saveCacheToLocal();
   });
 }
@@ -955,6 +966,7 @@ function openChat(id){
   if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");
   renderMsgs(c);
   document.getElementById("msg-input").focus();
+  markChatAsRead(c);
 
   // S'assurer qu'on écoute bien les messages de cette discussion
   if(window._firebaseReady && !c._subscribed){
@@ -970,23 +982,39 @@ function goBack(){
 }
 
 // ══ MESSAGES ═══════════════════════════════════════════════════════════
+function getTickHtml(m,c){
+  if(m.from!=="me")return "";
+  // Message en attente (envoyé hors-ligne, pas encore synchronisé)
+  if(m._pending) return "";
+  // ✓✓ bleu : lu par le destinataire
+  if(c.theirReadTs && m.ts && c.theirReadTs >= m.ts){
+    return '<span class="tick read">✓✓</span>';
+  }
+  // ✓✓ gris : destinataire en ligne (livré) mais pas encore lu
+  if(c.online){
+    return '<span class="tick delivered">✓✓</span>';
+  }
+  // ✓ simple : envoyé, destinataire hors-ligne
+  return '<span class="tick sent">✓</span>';
+}
+
 function renderMsgs(c){
   const box=document.getElementById("messages");
   box.innerHTML='<div class="dlabel">Aujourd\'hui</div>';
-  if(!c.msgs.length){box.innerHTML+=`<div style="text-align:center;color:var(--muted);font-size:13px;margin-top:18px;">${t("nomsg")}</div>`;scrollBot();return;}
+  if(!c.msgs.length){box.innerHTML+=`<div style="text-align:center;color:#667781;font-size:13px;margin-top:18px;">${t("nomsg")}</div>`;scrollBot();return;}
   c.msgs.forEach(m=>{
     if(m.del_me)return;
     const div=document.createElement("div");
     div.className="msg "+(m.from==="me"?"me":"them");
-    const tick=m.from==="me"?`<span class="tick ${m.read?"read":""}">✓✓</span>`:"";
+    const tick=getTickHtml(m,c);
     let ct="";
     if(m.del_all)ct='<span class="del-msg">🚫 Ce message a été supprimé</span>';
     else if(m.type==="image")ct=`<img src="${m.data}" onclick="openMedia('${m.data}','image')"/>`;
     else if(m.type==="video")ct=`<video src="${m.data}" controls></video>`;
     else if(m.type==="audio")ct=`<audio src="${m.data}" controls></audio>`;
     else ct=esc(m.text||"");
-    const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}',${m.id},'${m.from}')">🗑</button>`:"";
-    div.innerHTML=`<div class="bbl" oncontextmenu="openDel('${c.id}',${m.id},'${m.from}');return false;" ontouchstart="ts(event,'${c.id}',${m.id},'${m.from}')" ontouchend="te()">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
+    const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}','${m.id}','${m.from}')">🗑</button>`:"";
+    div.innerHTML=`<div class="bbl" oncontextmenu="openDel('${c.id}','${m.id}','${m.from}');return false;" ontouchstart="ts(event,'${c.id}','${m.id}','${m.from}')" ontouchend="te()">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
     box.appendChild(div);
   });
   scrollBot();
@@ -1312,8 +1340,83 @@ function loginOk(){
     const r=window._ref(window._db,"users/"+safeId+"/profile");
     window._set(r,{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
     loadContactsFromFirebase();
+    startPresence();
   }
   setTimeout(()=>document.getElementById("login").classList.add("hidden"),700);
+}
+
+// ══ PRÉSENCE (en ligne / hors ligne) ════════════════════════════════════
+let presenceInterval=null;
+function startPresence(){
+  if(!window._firebaseReady||!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const r=window._ref(window._db,"users/"+myId+"/presence");
+  const update=()=>window._set(r,{online:true,lastActive:Date.now()});
+  update();
+  clearInterval(presenceInterval);
+  presenceInterval=setInterval(update,15000);
+  window.addEventListener("beforeunload",()=>{
+    window._set(r,{online:false,lastActive:Date.now()});
+  });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="hidden"){
+      window._set(r,{online:false,lastActive:Date.now()});
+    }else{
+      update();
+    }
+  });
+}
+
+// Écoute la présence d'un contact (en ligne/hors ligne)
+function subscribeToPresence(c){
+  if(!window._firebaseReady)return;
+  const r=window._ref(window._db,"users/"+c.id+"/presence");
+  window._onValue(r,snap=>{
+    const data=snap.val();
+    const isOnline = data && data.online && (Date.now()-data.lastActive < 30000);
+    c.online = isOnline;
+    c.status = isOnline ? "En ligne" : "Hors ligne";
+    if(activeId===c.id) document.getElementById("hstatus").textContent=c.status;
+    renderChats(document.getElementById("search-inp").value);
+  });
+}
+
+// Resynchronise les messages envoyés hors-ligne (_pending) dès que la connexion revient
+function resyncPendingMessages(){
+  if(!window._firebaseReady)return;
+  contacts.forEach(c=>{
+    if(!c.msgs)return;
+    const pending=c.msgs.filter(m=>m._pending);
+    if(!pending.length)return;
+    const chatId=getChatId(c.name);
+    const r=window._ref(window._db,"chats/"+chatId+"/msgs");
+    pending.forEach(m=>{
+      window._push(r,{sender:myEmail,text:m.text,type:"text",time:m.time,ts:Date.now(),read:false});
+    });
+    // Retire les messages en attente : ils reviendront via subscribeToChat avec un vrai id Firebase
+    c.msgs=c.msgs.filter(m=>!m._pending);
+  });
+  saveCacheToLocal();
+}
+
+// Marque les messages reçus comme "lus" quand on ouvre la discussion
+function markChatAsRead(c){
+  if(!window._firebaseReady||!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  const r=window._ref(window._db,"users/"+myId+"/readStatus/"+c.id);
+  window._set(r,Date.now());
+}
+
+// Écoute quand l'autre personne a lu nos messages
+function subscribeToReadStatus(c){
+  if(!window._firebaseReady)return;
+  const r=window._ref(window._db,"users/"+c.id+"/readStatus/"+myEmail.replace(/[^a-zA-Z0-9]/g,"_"));
+  window._onValue(r,snap=>{
+    const ts=snap.val();
+    c.theirReadTs=ts||0;
+    renderChats(document.getElementById("search-inp").value);
+    if(activeId===c.id) renderMsgs(c);
+  });
 }
 
 function applyAvatar(){
@@ -1358,8 +1461,10 @@ if(savedEmail){
   // 1. Charger immédiatement depuis le cache local (fonctionne hors-ligne)
   loadCacheFromLocal();
   // 2. Puis se synchroniser avec Firebase si une connexion est disponible
-  window.addEventListener("firebaseReady", loadContactsFromFirebase);
-  if(window._firebaseReady) loadContactsFromFirebase();
+  const onFbReady=()=>{loadContactsFromFirebase();startPresence();resyncPendingMessages();};
+  window.addEventListener("firebaseReady", onFbReady);
+  if(window._firebaseReady) onFbReady();
+  window.addEventListener("online", resyncPendingMessages);
 } else {
   document.getElementById("login").classList.remove("hidden");
 }
