@@ -1064,13 +1064,18 @@ function renderMsgs(c){
     }
     else if(m.type==="video"){
       const src=m.url||m.data||"";
-      ct=`<video src="${src}" controls style="max-width:220px;border-radius:12px;display:block;"></video>`;
+      ct=`<video src="${src}" controls playsinline preload="metadata" style="max-width:220px;max-height:300px;border-radius:12px;display:block;background:#000;"></video>`;
     }
     else if(m.type==="audio"){
       const src=m.url||m.data||"";
-      ct=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="font-size:20px;">🎤</span>
-        <audio src="${src}" controls style="width:170px;height:32px;border-radius:16px;outline:none;"></audio>
+      const mid="aud_"+m.id;
+      ct=`<div style="display:flex;align-items:center;gap:10px;padding:6px 4px;min-width:220px;">
+        <button onclick="toggleAudio('${mid}')" style="background:var(--ac);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;">▶️</button>
+        <div style="flex:1;">
+          <audio id="${mid}" src="${src}" onended="resetAudioBtn('${mid}')" style="display:none;"></audio>
+          <div style="font-size:12px;font-weight:700;color:inherit;">🎤 Message vocal</div>
+          <input type="range" id="${mid}_bar" value="0" min="0" max="100" style="width:100%;height:3px;accent-color:var(--ac);" oninput="seekAudio('${mid}',this.value)"/>
+        </div>
       </div>`;
     }
     else ct=esc(m.text||"");
@@ -1116,10 +1121,8 @@ async function uploadToStorage(file, folder){
     formData.append("folder", "bermax/"+folder);
 
     // Choisir le bon endpoint selon le type de fichier
-    let resourceType = "auto";
+    let resourceType = "video"; // "video" sur Cloudinary gère aussi l'audio
     if(file.type.startsWith("image/")) resourceType = "image";
-    else if(file.type.startsWith("video/")) resourceType = "video";
-    else if(file.type.startsWith("audio/")) resourceType = "raw"; // audio → raw sur Cloudinary
 
     const resp = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
@@ -1270,31 +1273,38 @@ function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
 function sendRec(){
   if(!mediaRecorder)return;
   mediaRecorder.onstop=async()=>{
-    // Essayer mp4 d'abord, sinon webm
-    const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" :
-                     MediaRecorder.isTypeSupported("audio/ogg") ? "audio/ogg" : "audio/webm";
-    const blob=new Blob(audioChunks,{type:mimeType});
+    // Utiliser le même mimeType que celui utilisé à l'enregistrement
+    const mimeType = mediaRecorder.mimeType || "audio/webm";
+    const blob = new Blob(audioChunks, {type: mimeType});
     mediaRecorder.stream.getTracks().forEach(t=>t.stop());
-    const c=contacts.find(x=>x.id===activeId);
-    if(!c)return;
+    const c = contacts.find(x=>x.id===activeId);
+    if(!c || blob.size===0){showToast("❌ Enregistrement vide");return;}
 
-    const ext = mimeType.includes("mp4")?"m4a":mimeType.includes("ogg")?"ogg":"webm";
-    const file=new File([blob],"voice_"+Date.now()+"."+ext,{type:mimeType});
-    const url=await uploadToStorage(file,"audio");
-    if(!url)return;
+    // Choisir l'extension selon le mimeType réel
+    let ext = "webm";
+    if(mimeType.includes("ogg")) ext = "ogg";
+    else if(mimeType.includes("mp4")) ext = "mp4";
 
-    const msg={
-      sender:myEmail,type:"audio",
-      url:url,text:"🎤 Message vocal",
-      time:getTime(),ts:Date.now(),read:false
+    const file = new File([blob], "voice_"+Date.now()+"."+ext, {type: mimeType});
+    console.log("Audio blob size:", blob.size, "type:", mimeType);
+
+    const url = await uploadToStorage(file, "audio");
+    if(!url) return;
+
+    const msg = {
+      sender: myEmail, type: "audio",
+      url: url, mimeType: mimeType,
+      text: "🎤 Message vocal",
+      time: getTime(), ts: Date.now(), read: false
     };
     if(window._firebaseReady){
-      const chatId=getChatId(c.name);
-      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+      const chatId = getChatId(c.name);
+      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msg);
       showToast("🎤 Vocal envoyé !");
     }
   };
-  mediaRecorder.stop();stopRec(false);
+  mediaRecorder.stop();
+  stopRec(false);
 }
 function stopRec(doStop=true){
   clearInterval(recInterval);recSecs=0;isPaused=false;
@@ -1830,6 +1840,38 @@ function buildEmoji(){
   const p=document.getElementById("emoji-picker");
   EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="ep";b.textContent=e;b.onclick=()=>{document.getElementById("msg-input").value+=e;};p.appendChild(b);});
 }
+// ── LECTEUR AUDIO ────────────────────────────────────────────────────────
+function toggleAudio(id){
+  const audio=document.getElementById(id);
+  const btn=audio?audio.parentElement.previousElementSibling:null;
+  if(!audio)return;
+  if(audio.paused){
+    // Pause tous les autres audios
+    document.querySelectorAll("audio").forEach(a=>{if(a.id!==id){a.pause();resetAudioBtn(a.id);}});
+    audio.play().catch(e=>console.error("Audio play error:",e));
+    if(btn) btn.textContent="⏸️";
+    // Update progress bar
+    audio.ontimeupdate=()=>{
+      const bar=document.getElementById(id+"_bar");
+      if(bar&&audio.duration){bar.value=(audio.currentTime/audio.duration)*100;}
+    };
+  }else{
+    audio.pause();
+    if(btn) btn.textContent="▶️";
+  }
+}
+function resetAudioBtn(id){
+  const audio=document.getElementById(id);
+  const btn=audio?audio.parentElement.previousElementSibling:null;
+  if(btn) btn.textContent="▶️";
+  const bar=document.getElementById(id+"_bar");
+  if(bar) bar.value=0;
+}
+function seekAudio(id,val){
+  const audio=document.getElementById(id);
+  if(audio&&audio.duration) audio.currentTime=(val/100)*audio.duration;
+}
+
 function toggleEmoji(){emojiOpen=!emojiOpen;document.getElementById("emoji-picker").classList.toggle("show",emojiOpen);}
 document.addEventListener("click",e=>{if(!e.target.closest(".emj-btn")&&!e.target.closest("#emoji-picker")){emojiOpen=false;document.getElementById("emoji-picker").classList.remove("show");}});
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
