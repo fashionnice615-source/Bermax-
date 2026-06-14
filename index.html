@@ -13,6 +13,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, push, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
   const cfg = {
     apiKey:"AIzaSyDL6LcD3SZcX-AwfvSPuUZxE2PRHV9BUx8",
     authDomain:"bermax-3ffcc.firebaseapp.com",
@@ -25,6 +26,7 @@
   const app=initializeApp(cfg), db=getDatabase(app);
   window._db=db;window._ref=ref;window._push=push;window._set=set;
   window._update=update;window._onValue=onValue;
+
   window._firebaseReady=true;
   window.dispatchEvent(new Event("firebaseReady"));
 </script>
@@ -387,8 +389,12 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <div id="emoji-picker"></div>
       <div class="ibar">
         <button class="emj-btn" onclick="toggleEmoji()">😊</button>
-        <button class="att-btn" onclick="document.getElementById('finput').click()">📎</button>
-        <input type="file" id="finput" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
+        <button class="att-btn" onclick="document.getElementById('finput-gallery').click()" title="Galerie">🖼️</button>
+        <button class="att-btn" onclick="document.getElementById('finput-video').click()" title="Vidéo">🎬</button>
+        <!-- Galerie images -->
+        <input type="file" id="finput-gallery" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
+        <!-- Vidéo galerie -->
+        <input type="file" id="finput-video" accept="video/*" style="display:none" onchange="sendFile(this)"/>
         <textarea id="msg-input" rows="1" placeholder="Écrire un message…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button id="send-btn" onclick="sendMsg()">➤</button>
         <button id="mic-btn" onclick="startRec()">🎤</button>
@@ -1057,9 +1063,21 @@ function renderMsgs(c){
     const tick=getTickHtml(m,c);
     let ct="";
     if(m.del_all)ct='<span class="del-msg">🚫 Ce message a été supprimé</span>';
-    else if(m.type==="image")ct=`<img src="${m.data}" onclick="openMedia('${m.data}','image')"/>`;
-    else if(m.type==="video")ct=`<video src="${m.data}" controls></video>`;
-    else if(m.type==="audio")ct=`<audio src="${m.data}" controls></audio>`;
+    else if(m.type==="image"){
+      const src=m.url||m.data||"";
+      ct=`<img src="${src}" onclick="openMedia('${src}','image')" style="max-width:220px;max-height:220px;border-radius:12px;display:block;cursor:pointer;"/>`;
+    }
+    else if(m.type==="video"){
+      const src=m.url||m.data||"";
+      ct=`<video src="${src}" controls style="max-width:220px;border-radius:12px;display:block;"></video>`;
+    }
+    else if(m.type==="audio"){
+      const src=m.url||m.data||"";
+      ct=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <span style="font-size:20px;">🎤</span>
+        <audio src="${src}" controls style="width:170px;height:32px;border-radius:16px;outline:none;"></audio>
+      </div>`;
+    }
     else ct=esc(m.text||"");
     const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}','${m.id}','${m.from}')">🗑</button>`:"";
     div.innerHTML=`<div class="bbl" oncontextmenu="openDel('${c.id}','${m.id}','${m.from}');return false;" ontouchstart="ts(event,'${c.id}','${m.id}','${m.from}')" ontouchend="te()">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
@@ -1090,26 +1108,72 @@ function sendMsg(){
     showToast("📴 Hors-ligne : message en attente d'envoi");
   }
 }
-function sendFile(input){
+// ══ CLOUDINARY UPLOAD ════════════════════════════════════════════════════
+const CLOUDINARY_CLOUD = "dgv4lrzug";
+const CLOUDINARY_PRESET = "ml_default";
+
+async function uploadToStorage(file, folder){
+  try{
+    showToast("⏳ Envoi en cours...");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_PRESET);
+    formData.append("folder", "bermax/"+folder);
+
+    // Choisir le bon endpoint selon le type de fichier
+    let resourceType = "auto";
+    if(file.type.startsWith("image/")) resourceType = "image";
+    else if(file.type.startsWith("video/")) resourceType = "video";
+    else if(file.type.startsWith("audio/")) resourceType = "video"; // Cloudinary gère l'audio sous "video"
+
+    const resp = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
+      {method:"POST", body:formData}
+    );
+    const data = await resp.json();
+    if(data.secure_url){
+      return data.secure_url;
+    }else{
+      console.error("Cloudinary error:", data);
+      showToast("❌ Erreur Cloudinary : "+(data.error?.message||"inconnue"));
+      return null;
+    }
+  }catch(e){
+    console.error("Upload error:",e);
+    showToast("❌ Erreur envoi : "+e.message);
+    return null;
+  }
+}
+
+async function sendFile(input){
   if(!input.files||!input.files[0]||!activeId)return;
   const file=input.files[0];
-  const isImg=file.type.startsWith("image/"),isVid=file.type.startsWith("video/");
-  if(!isImg&&!isVid){showToast("❌ Format non supporté");return;}
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const c=contacts.find(x=>x.id===activeId);
-    const msg={sender:myEmail,type:isImg?"image":"video",data:e.target.result,text:isImg?"📷":"🎥",time:getTime(),read:false};
-    if(window._firebaseReady){
-      const chatId=getChatId(c.name);
-      const r=window._ref(window._db,"chats/"+chatId+"/msgs");
-      window._push(r,msg);
-    }else{
-      c.msgs.push({id:Date.now(),from:"me",...msg});
-      renderMsgs(c);renderChats(document.getElementById("search-inp").value);
-    }
-    showToast(isImg?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
+  const isImg=file.type.startsWith("image/");
+  const isVid=file.type.startsWith("video/");
+  if(!isImg&&!isVid){showToast("❌ Seules les images et vidéos sont supportées");return;}
+  // Vérifie la taille (max 50MB pour Firebase Storage free)
+  if(file.size>50*1024*1024){showToast("❌ Fichier trop lourd (max 50MB)");input.value="";return;}
+  const c=contacts.find(x=>x.id===activeId);
+  if(!c)return;
+  input.value="";
+
+  // Upload sur Firebase Storage
+  const folder=isImg?"images":"videos";
+  const url=await uploadToStorage(file, folder);
+  if(!url)return;
+
+  const msg={
+    sender:myEmail,
+    type:isImg?"image":"video",
+    url:url,
+    text:isImg?"📷 Image":"🎥 Vidéo",
+    time:getTime(),ts:Date.now(),read:false
   };
-  reader.readAsDataURL(file);input.value="";
+  if(window._firebaseReady){
+    const chatId=getChatId(c.name);
+    window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+    showToast(isImg?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
+  }
 }
 function openMedia(src,type){
   const o=document.createElement("div");
@@ -1206,24 +1270,27 @@ function togglePause(){
 function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
 function sendRec(){
   if(!mediaRecorder)return;
-  mediaRecorder.onstop=()=>{
+  mediaRecorder.onstop=async()=>{
     const blob=new Blob(audioChunks,{type:"audio/webm"});
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const c=contacts.find(x=>x.id===activeId);
-      const msg={sender:myEmail,type:"audio",data:ev.target.result,text:"🎤",time:getTime(),read:false};
-      if(window._firebaseReady){
-        const chatId=getChatId(c.name);
-        const r=window._ref(window._db,"chats/"+chatId+"/msgs");
-        window._push(r,msg);
-      }else{
-        c.msgs.push({id:Date.now(),from:"me",...msg});
-        renderMsgs(c);renderChats(document.getElementById("search-inp").value);
-      }
-      showToast("🎤 Vocal envoyé !");
-    };
-    reader.readAsDataURL(blob);
     mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+    const c=contacts.find(x=>x.id===activeId);
+    if(!c)return;
+
+    // Upload audio sur Firebase Storage
+    const file=new File([blob],"voice_"+Date.now()+".webm",{type:"audio/webm"});
+    const url=await uploadToStorage(file,"audio");
+    if(!url)return;
+
+    const msg={
+      sender:myEmail,type:"audio",
+      url:url,text:"🎤 Message vocal",
+      time:getTime(),ts:Date.now(),read:false
+    };
+    if(window._firebaseReady){
+      const chatId=getChatId(c.name);
+      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+      showToast("🎤 Vocal envoyé !");
+    }
   };
   mediaRecorder.stop();stopRec(false);
 }
