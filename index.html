@@ -1076,14 +1076,17 @@ function renderMsgs(c){
       else { ct=`<video controls playsinline preload="metadata" style="max-width:240px;max-height:300px;border-radius:12px;display:block;background:#000;"><source src="${src}">Vidéo non supportée</video>`; }
     }
     else if(m.type==="audio"){
-      // Priorité : base64 (data) puis URL Cloudinary
       const src = m.data || m.url || "";
+      const dur = m.duration ? m.duration+"s" : "";
       if(!src){
         ct='<span style="color:#999;font-size:13px;">🎤 Vocal (chargement...)</span>';
       } else {
-        ct=`<div style="background:rgba(0,0,0,.08);border-radius:14px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-width:200px;max-width:260px;">
-          <span style="font-size:22px;flex-shrink:0;">🎤</span>
-          <audio controls preload="auto" style="flex:1;height:40px;min-width:0;max-width:190px;" src="${src}"></audio>
+        ct=`<div style="background:rgba(0,0,0,.08);border-radius:14px;padding:8px 12px;min-width:220px;max-width:260px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:20px;">🎤</span>
+            <span style="font-size:11px;color:#667781;font-weight:700;">Message vocal ${dur}</span>
+          </div>
+          <audio controls preload="auto" style="width:100%;height:36px;" src="${src}"></audio>
         </div>`;
       }
     }
@@ -1292,44 +1295,91 @@ function togglePause(){
     showToast("⏸ En pause");
   }
 }
-function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
+function cancelRec(){
+  if(mediaRecorder && mediaRecorder.state!=="inactive"){
+    mediaRecorder.onstop=()=>{
+      mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+      audioChunks=[];
+    };
+    mediaRecorder.stop();
+  }
+  clearInterval(recInterval);recSecs=0;isPaused=false;audioChunks=[];
+  document.getElementById("vbar").classList.remove("show");
+  document.getElementById("vtimer").textContent="0:00";
+  document.getElementById("picon").textContent="⏸️";
+  document.getElementById("vwave").classList.remove("paused");
+  const inp=document.getElementById("msg-input");
+  inp.disabled=false;inp.placeholder=t("wm");inp.style.opacity="1";
+  const btn=document.getElementById("send-btn");
+  if(btn){btn.textContent="🎤";btn.style.background="linear-gradient(135deg,#1a4a8a,#2563eb)";}
+  showToast("🗑️ Enregistrement annulé");
+}
 function sendRec(){
-  if(!mediaRecorder)return;
-  mediaRecorder.onstop=()=>{
-    const mimeType = mediaRecorder.mimeType || "audio/webm";
-    const blob = new Blob(audioChunks, {type: mimeType});
-    mediaRecorder.stream.getTracks().forEach(t=>t.stop());
-    const c = contacts.find(x=>x.id===activeId);
-    if(!c || blob.size===0){showToast("❌ Enregistrement vide");return;}
+  if(!mediaRecorder || mediaRecorder.state==="inactive")return;
+  
+  // Capturer les références AVANT d'arrêter
+  const recMR = mediaRecorder;
+  const recChunks = [...audioChunks]; // copie des chunks actuels
+  const recContact = contacts.find(x=>x.id===activeId);
+  
+  // Arrêter l'UI immédiatement
+  clearInterval(recInterval);
+  recSecs=0; isPaused=false;
+  document.getElementById("vbar").classList.remove("show");
+  const inp=document.getElementById("msg-input");
+  inp.disabled=false; inp.placeholder=t("wm"); inp.style.opacity="1";
+  const btn=document.getElementById("send-btn");
+  if(btn){btn.textContent="🎤";btn.style.background="linear-gradient(135deg,#1a4a8a,#2563eb)";}
+  document.getElementById("vtimer").textContent="0:00";
 
+  recMR.ondataavailable = e => {
+    if(e.data && e.data.size>0) recChunks.push(e.data);
+  };
+
+  recMR.onstop = ()=>{
+    // Arrêter le stream
+    recMR.stream.getTracks().forEach(t=>t.stop());
+    
+    const mimeType = recMR.mimeType || "audio/webm";
+    const blob = new Blob(recChunks, {type: mimeType});
+    audioChunks = []; // nettoyer maintenant que c'est copié
+    
+    if(!recContact || blob.size < 100){
+      showToast("❌ Enregistrement trop court ou vide");
+      return;
+    }
+    
     showToast("⏳ Envoi du vocal...");
-
-    // Convertir en base64 pour stocker directement dans Firebase
+    const duration = Math.round(recSecs) || 1;
+    
     const reader = new FileReader();
     reader.onloadend = ()=>{
-      const base64 = reader.result; // "data:audio/webm;base64,..."
+      const base64 = reader.result;
       const msgData = {
         sender: myEmail,
         type: "audio",
-        data: base64,    // stocké en base64 dans Firebase
+        data: base64,
         url: "",
-        text: "🎤 Message vocal",
+        duration: duration,
+        text: "🎤 "+duration+"s",
         time: getTime(), ts: Date.now(), read: false
       };
       if(window._firebaseReady){
-        const chatId = getChatId(c.name);
+        const chatId = getChatId(recContact.name);
         window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
         showToast("🎤 Vocal envoyé !");
       }else{
-        c.msgs.push({id:"local_"+Date.now(), from:"me", ...msgData});
-        renderMsgs(c);
+        recContact.msgs.push({id:"local_"+Date.now(), from:"me", ...msgData});
+        renderMsgs(recContact);
         saveCacheToLocal();
       }
     };
     reader.readAsDataURL(blob);
   };
-  mediaRecorder.stop();
-  stopRec(false);
+
+  // Demander les derniers chunks puis déclencher onstop
+  recMR.requestData();
+  setTimeout(()=>{ if(recMR.state!=="inactive") recMR.stop(); }, 100);
 }
 function stopRec(doStop=true){
   clearInterval(recInterval);recSecs=0;isPaused=false;
