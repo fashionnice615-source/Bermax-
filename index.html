@@ -155,8 +155,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 #msg-input::placeholder{color:var(--muted);}
 #send-btn{width:38px;height:38px;background:var(--ac);border:none;border-radius:50%;color:#000;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 9px rgba(37,211,102,.3);transition:background .2s,transform .15s;}
 #send-btn:hover{background:#1db954;transform:scale(1.07);}
-#mic-btn{width:38px;height:38px;background:linear-gradient(135deg,#1a4a8a,#2563eb);border:none;border-radius:50%;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 10px rgba(37,99,235,.4);}
-#mic-btn.recording{background:linear-gradient(135deg,#7f1d1d,#dc2626);animation:pmic 1s infinite;}
+
 @keyframes pmic{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
 
 /* VOICE BAR */
@@ -389,15 +388,10 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <div id="emoji-picker"></div>
       <div class="ibar">
         <button class="emj-btn" onclick="toggleEmoji()">😊</button>
-        <button class="att-btn" onclick="document.getElementById('finput-gallery').click()" title="Galerie">🖼️</button>
-        <button class="att-btn" onclick="document.getElementById('finput-video').click()" title="Vidéo">🎬</button>
-        <!-- Galerie images -->
+        <button class="att-btn" onclick="document.getElementById('finput-gallery').click()" title="Photo / Vidéo">📎</button>
         <input type="file" id="finput-gallery" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
-        <!-- Vidéo galerie -->
-        <input type="file" id="finput-video" accept="video/*" style="display:none" onchange="sendFile(this)"/>
-        <textarea id="msg-input" rows="1" placeholder="Écrire un message…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button id="send-btn" onclick="sendMsg()">➤</button>
-        <button id="mic-btn" onclick="startRec()">🎤</button>
+        <textarea id="msg-input" rows="1" placeholder="Écrire un message…" onkeydown="handleKey(event)" oninput="autoResize(this);updateSendBtn();"></textarea>
+        <button id="send-btn" onclick="smartSend()">🎤</button>
       </div>
     </div>
   </div>
@@ -1021,6 +1015,7 @@ function openChat(id){
   renderMsgs(c);
   document.getElementById("msg-input").focus();
   markChatAsRead(c);
+  updateSendBtn();
 
   // S'assurer qu'on écoute bien les messages de cette discussion
   if(window._firebaseReady && !c._subscribed){
@@ -1124,7 +1119,7 @@ async function uploadToStorage(file, folder){
     let resourceType = "auto";
     if(file.type.startsWith("image/")) resourceType = "image";
     else if(file.type.startsWith("video/")) resourceType = "video";
-    else if(file.type.startsWith("audio/")) resourceType = "video"; // Cloudinary gère l'audio sous "video"
+    else if(file.type.startsWith("audio/")) resourceType = "raw"; // audio → raw sur Cloudinary
 
     const resp = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
@@ -1151,15 +1146,20 @@ async function sendFile(input){
   const isImg=file.type.startsWith("image/");
   const isVid=file.type.startsWith("video/");
   if(!isImg&&!isVid){showToast("❌ Seules les images et vidéos sont supportées");return;}
-  // Vérifie la taille (max 50MB pour Firebase Storage free)
-  if(file.size>50*1024*1024){showToast("❌ Fichier trop lourd (max 50MB)");input.value="";return;}
+  if(file.size>100*1024*1024){showToast("❌ Fichier trop lourd (max 100MB)");input.value="";return;}
   const c=contacts.find(x=>x.id===activeId);
   if(!c)return;
   input.value="";
 
-  // Upload sur Firebase Storage
+  // Pour les vidéos, s'assurer du bon format
+  let uploadFile=file;
+  if(isVid && !file.type.includes("mp4") && !file.type.includes("webm")){
+    // Renommer en mp4 pour compatibilité Cloudinary
+    uploadFile=new File([file],"video_"+Date.now()+".mp4",{type:"video/mp4"});
+  }
+
   const folder=isImg?"images":"videos";
-  const url=await uploadToStorage(file, folder);
+  const url=await uploadToStorage(uploadFile, folder);
   if(!url)return;
 
   const msg={
@@ -1235,7 +1235,6 @@ function startRec(){
     mediaRecorder.onstop=()=>stream.getTracks().forEach(t=>t.stop());
     mediaRecorder.start(100);
     document.getElementById("vbar").classList.add("show");
-    document.getElementById("mic-btn").classList.add("recording");
     const inp=document.getElementById("msg-input");
     inp.disabled=true;inp.placeholder="🎤 Enregistrement...";inp.style.opacity=".4";
     updateTimer();
@@ -1271,13 +1270,16 @@ function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
 function sendRec(){
   if(!mediaRecorder)return;
   mediaRecorder.onstop=async()=>{
-    const blob=new Blob(audioChunks,{type:"audio/webm"});
+    // Essayer mp4 d'abord, sinon webm
+    const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" :
+                     MediaRecorder.isTypeSupported("audio/ogg") ? "audio/ogg" : "audio/webm";
+    const blob=new Blob(audioChunks,{type:mimeType});
     mediaRecorder.stream.getTracks().forEach(t=>t.stop());
     const c=contacts.find(x=>x.id===activeId);
     if(!c)return;
 
-    // Upload audio sur Firebase Storage
-    const file=new File([blob],"voice_"+Date.now()+".webm",{type:"audio/webm"});
+    const ext = mimeType.includes("mp4")?"m4a":mimeType.includes("ogg")?"ogg":"webm";
+    const file=new File([blob],"voice_"+Date.now()+"."+ext,{type:mimeType});
     const url=await uploadToStorage(file,"audio");
     if(!url)return;
 
@@ -1299,13 +1301,15 @@ function stopRec(doStop=true){
   if(doStop&&mediaRecorder&&mediaRecorder.state!=="inactive"){mediaRecorder.stream.getTracks().forEach(t=>t.stop());mediaRecorder.stop();}
   audioChunks=[];
   document.getElementById("vbar").classList.remove("show");
-  document.getElementById("mic-btn").classList.remove("recording");
   document.getElementById("vtimer").textContent="0:00";
   document.getElementById("picon").textContent="⏸️";
   document.getElementById("rstatus").textContent="🎙 REC";
   document.getElementById("vwave").classList.remove("paused");
   const inp=document.getElementById("msg-input");
   inp.disabled=false;inp.placeholder=t("wm");inp.style.opacity="1";
+  // Reset send button
+  const btn=document.getElementById("send-btn");
+  if(btn){btn.textContent="🎤";btn.style.background="linear-gradient(135deg,#1a4a8a,#2563eb)";}
 }
 
 // ══ LOGIN ════════════════════════════════════════════════════════════════
@@ -1794,6 +1798,32 @@ function toggleMute(){
   btn.textContent=btn.classList.contains("muted")?"🔇":"🔔";
   showToast(btn.classList.contains("muted")?"🔇 Contact muté":"🔔 Notifications activées");
 }
+// Bouton d'envoi intelligent : 🎤 si champ vide → enregistrement vocal, ➤ si texte → envoyer
+function updateSendBtn(){
+  const inp=document.getElementById("msg-input");
+  const btn=document.getElementById("send-btn");
+  if(!inp||!btn)return;
+  const hasText=inp.value.trim().length>0;
+  btn.textContent=hasText?"➤":"🎤";
+  btn.style.background=hasText?"var(--ac)":"linear-gradient(135deg,#1a4a8a,#2563eb)";
+}
+
+function smartSend(){
+  const inp=document.getElementById("msg-input");
+  const hasText=inp&&inp.value.trim().length>0;
+  if(hasText){
+    sendMsg();
+  }else{
+    // Si on est en train d'enregistrer → envoyer le vocal
+    if(mediaRecorder&&mediaRecorder.state!=="inactive"){
+      sendRec();
+    }else{
+      // Sinon démarrer l'enregistrement
+      startRec();
+    }
+  }
+}
+
 function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}
 function autoResize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,110)+"px";}
 function buildEmoji(){
