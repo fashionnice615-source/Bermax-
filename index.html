@@ -1068,14 +1068,11 @@ function renderMsgs(c){
     }
     else if(m.type==="audio"){
       const src=m.url||m.data||"";
-      const mid="aud_"+m.id;
-      ct=`<div style="display:flex;align-items:center;gap:10px;padding:6px 4px;min-width:220px;">
-        <button onclick="toggleAudio('${mid}')" style="background:var(--ac);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;">▶️</button>
-        <div style="flex:1;">
-          <audio id="${mid}" src="${src}" onended="resetAudioBtn('${mid}')" style="display:none;"></audio>
-          <div style="font-size:12px;font-weight:700;color:inherit;">🎤 Message vocal</div>
-          <input type="range" id="${mid}_bar" value="0" min="0" max="100" style="width:100%;height:3px;accent-color:var(--ac);" oninput="seekAudio('${mid}',this.value)"/>
-        </div>
+      ct=`<div style="background:rgba(0,0,0,.06);border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:8px;min-width:200px;">
+        <span style="font-size:22px;">🎤</span>
+        <audio src="${src}" controls controlsList="nodownload" style="flex:1;height:36px;min-width:0;border-radius:20px;outline:none;" preload="auto">
+          Votre navigateur ne supporte pas l'audio.
+        </audio>
       </div>`;
     }
     else ct=esc(m.text||"");
@@ -1120,25 +1117,31 @@ async function uploadToStorage(file, folder){
     formData.append("upload_preset", CLOUDINARY_PRESET);
     formData.append("folder", "bermax/"+folder);
 
-    // Choisir le bon endpoint selon le type de fichier
-    let resourceType = "video"; // "video" sur Cloudinary gère aussi l'audio
+    // Déterminer le type de ressource Cloudinary
+    let resourceType = "raw"; // par défaut pour audio
     if(file.type.startsWith("image/")) resourceType = "image";
+    else if(file.type.startsWith("video/")) resourceType = "video";
+    // audio → "raw" pour Cloudinary (stocké tel quel)
+
+    console.log("Uploading:", file.name, "type:", file.type, "size:", file.size, "resource:", resourceType);
 
     const resp = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
+      "https://api.cloudinary.com/v1_1/"+CLOUDINARY_CLOUD+"/"+resourceType+"/upload",
       {method:"POST", body:formData}
     );
     const data = await resp.json();
+    console.log("Cloudinary response:", data);
     if(data.secure_url){
+      showToast("✅ Envoyé !");
       return data.secure_url;
     }else{
       console.error("Cloudinary error:", data);
-      showToast("❌ Erreur Cloudinary : "+(data.error?.message||"inconnue"));
+      showToast("❌ Erreur : "+(data.error&&data.error.message||"inconnue"));
       return null;
     }
   }catch(e){
     console.error("Upload error:",e);
-    showToast("❌ Erreur envoi : "+e.message);
+    showToast("❌ Erreur réseau : "+e.message);
     return null;
   }
 }
@@ -1154,15 +1157,11 @@ async function sendFile(input){
   if(!c)return;
   input.value="";
 
-  // Pour les vidéos, s'assurer du bon format
-  let uploadFile=file;
-  if(isVid && !file.type.includes("mp4") && !file.type.includes("webm")){
-    // Renommer en mp4 pour compatibilité Cloudinary
-    uploadFile=new File([file],"video_"+Date.now()+".mp4",{type:"video/mp4"});
-  }
-
   const folder=isImg?"images":"videos";
-  const url=await uploadToStorage(uploadFile, folder);
+  // Donner un nom propre au fichier
+  const ext = file.name ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
+  const namedFile = new File([file], (isImg?"img":"vid")+"_"+Date.now()+"."+ext, {type:file.type});
+  const url=await uploadToStorage(namedFile, folder);
   if(!url)return;
 
   const msg={
@@ -1230,20 +1229,29 @@ function te(){clearTimeout(ttimer);}
 // ══ VOICE ═══════════════════════════════════════════════════════════════
 function startRec(){
   if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
-  if(!navigator.mediaDevices){showToast("❌ Micro non supporté");return;}
-  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showToast("❌ Micro non supporté");return;}
+  navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(stream=>{
     audioChunks=[];isPaused=false;recSecs=0;
-    mediaRecorder=new MediaRecorder(stream);
-    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
-    mediaRecorder.onstop=()=>stream.getTracks().forEach(t=>t.stop());
-    mediaRecorder.start(100);
+    // Sélectionner le meilleur format audio supporté
+    const mime =
+      MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" :
+      MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" :
+      MediaRecorder.isTypeSupported("audio/ogg;codecs=opus") ? "audio/ogg;codecs=opus" : "";
+    const opts = mime ? {mimeType:mime} : {};
+    try{ mediaRecorder = new MediaRecorder(stream, opts); }
+    catch(e){ mediaRecorder = new MediaRecorder(stream); }
+    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+    mediaRecorder.start(200);
     document.getElementById("vbar").classList.add("show");
     const inp=document.getElementById("msg-input");
     inp.disabled=true;inp.placeholder="🎤 Enregistrement...";inp.style.opacity=".4";
     updateTimer();
     recInterval=setInterval(()=>{if(!isPaused){recSecs++;updateTimer();}},1000);
     showToast("🎤 Enregistrement démarré");
-  }).catch(()=>showToast("❌ Accès micro refusé"));
+  }).catch(e=>{
+    console.error("Micro error:",e);
+    showToast("❌ Micro refusé : "+e.name);
+  });
 }
 function updateTimer(){
   const m=Math.floor(recSecs/60),s=(recSecs%60).toString().padStart(2,"0");
