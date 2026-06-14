@@ -273,6 +273,36 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   #back-btn{display:block;}
 }
 
+/* MEDIA PICKER MODAL */
+#media-picker{display:none;position:fixed;bottom:0;left:0;width:100%;z-index:4000;background:rgba(0,0,0,.5);align-items:flex-end;justify-content:center;}
+#media-picker.show{display:flex;}
+.media-picker-sheet{width:100%;max-width:480px;background:var(--side);border-radius:22px 22px 0 0;padding:16px 16px 36px;display:flex;flex-direction:column;gap:12px;animation:sup .25s ease;}
+.media-picker-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--inp);border:none;border-radius:14px;color:var(--tx);font-family:var(--F);font-size:15px;font-weight:700;cursor:pointer;width:100%;text-align:left;transition:background .15s;}
+.media-picker-btn:hover{background:var(--hov);}
+.media-picker-btn .mpico{font-size:24px;width:44px;height:44px;background:var(--hd);border-radius:12px;display:flex;align-items:center;justify-content:center;}
+
+/* MEDIA PREVIEW MODAL */
+#media-preview{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.95);z-index:9000;flex-direction:column;}
+#media-preview.show{display:flex;}
+#media-preview-header{padding:12px 16px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.3);flex-shrink:0;}
+#media-preview-title{flex:1;color:#fff;font-size:14px;font-weight:700;}
+#media-preview-content{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+#media-preview-img{max-width:100%;max-height:100%;object-fit:contain;display:none;}
+#media-preview-vid{max-width:100%;max-height:100%;display:none;}
+#media-preview-caption{padding:10px 16px;background:rgba(0,0,0,.3);flex-shrink:0;display:flex;gap:10px;align-items:center;}
+#media-caption-inp{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:25px;color:#fff;font-family:var(--F);font-size:14px;padding:10px 16px;outline:none;}
+#media-caption-inp::placeholder{color:rgba(255,255,255,.5);}
+#media-send-btn{background:var(--ac);border:none;border-radius:50%;width:46px;height:46px;color:#000;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.multi-preview-strip{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;background:rgba(0,0,0,.3);flex-shrink:0;}
+.multi-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid transparent;cursor:pointer;flex-shrink:0;}
+.multi-thumb.active{border-color:var(--ac);}
+
+/* FULLSCREEN VIDEO */
+#fullscreen-video{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9999;flex-direction:column;align-items:center;justify-content:center;}
+#fullscreen-video.show{display:flex;}
+#fs-video{max-width:100%;max-height:100%;outline:none;}
+#fs-close{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.5);border:none;color:#fff;font-size:24px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
 /* CALL MODAL (WebRTC) */
 #call-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a2e;z-index:8000;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #call-modal.show{display:flex;}
@@ -388,13 +418,54 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <div id="emoji-picker"></div>
       <div class="ibar">
         <button class="emj-btn" onclick="toggleEmoji()">😊</button>
-        <button class="att-btn" onclick="document.getElementById('finput-gallery').click()" title="Photo / Vidéo">📎</button>
-        <input type="file" id="finput-gallery" accept="image/*,video/*" style="display:none" onchange="sendFile(this)"/>
+        <button class="att-btn" onclick="showMediaPicker()" title="Photo / Vidéo">📎</button>
+        <input type="file" id="finput-images" accept="image/*" multiple style="display:none" onchange="sendImages(this)"/>
+        <input type="file" id="finput-video" accept="video/*" style="display:none" onchange="sendFile(this)"/>
         <textarea id="msg-input" rows="1" placeholder="Écrire un message…" onkeydown="handleKey(event)" oninput="autoResize(this);updateSendBtn();"></textarea>
         <button id="send-btn" onclick="smartSend()">🎤</button>
       </div>
     </div>
   </div>
+</div>
+
+<!-- MEDIA PICKER -->
+<div id="media-picker" onclick="closeMediaPicker(event)">
+  <div class="media-picker-sheet">
+    <div class="shandle"></div>
+    <button class="media-picker-btn" onclick="closeMediaPicker();document.getElementById('finput-images').click()">
+      <span class="mpico">🖼️</span> Photos (sélection multiple)
+    </button>
+    <button class="media-picker-btn" onclick="closeMediaPicker();document.getElementById('finput-video').click()">
+      <span class="mpico">🎬</span> Vidéo depuis la galerie
+    </button>
+    <button class="media-picker-btn" onclick="closeMediaPicker()" style="color:var(--muted);">
+      <span class="mpico">✕</span> Annuler
+    </button>
+  </div>
+</div>
+
+<!-- MEDIA PREVIEW (avant envoi) -->
+<div id="media-preview">
+  <div id="media-preview-header">
+    <button onclick="closeMediaPreview()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>
+    <div id="media-preview-title">Aperçu</div>
+    <div id="media-count" style="font-size:12px;color:rgba(255,255,255,.7);"></div>
+  </div>
+  <div id="media-preview-content">
+    <img id="media-preview-img" alt=""/>
+    <video id="media-preview-vid" controls playsinline></video>
+  </div>
+  <div class="multi-preview-strip" id="multi-strip" style="display:none;"></div>
+  <div id="media-preview-caption">
+    <input type="text" id="media-caption-inp" placeholder="Ajouter une légende..."/>
+    <button id="media-send-btn" onclick="confirmSendMedia()">➤</button>
+  </div>
+</div>
+
+<!-- FULLSCREEN VIDEO -->
+<div id="fullscreen-video">
+  <video id="fs-video" controls playsinline autoplay></video>
+  <button id="fs-close" onclick="closeFullscreenVideo()">✕</button>
 </div>
 
 <!-- CALL MODAL (WebRTC) -->
@@ -944,7 +1015,7 @@ function loadContactsFromFirebase(){
 
 // Écoute les messages d'une discussion pour mettre à jour la liste (aperçu, badge)
 function subscribeToChat(c){
-  if(!window._firebaseReady)return;
+  if(!window._firebaseReady || c._subscribed)return;
   c._subscribed=true;
   const chatId=getChatId(c.name);
   const r=window._ref(window._db,"chats/"+chatId+"/msgs");
@@ -965,13 +1036,20 @@ function subscribeToChat(c){
       });
     });
     c.msgs=msgs;
-    renderChats(document.getElementById("search-inp").value);
+    renderChatsDebounced(document.getElementById("search-inp").value);
     if(activeId===c.id){renderMsgs(c);markChatAsRead(c);}
     saveCacheToLocal();
   });
 }
 
 // ══ CHAT LIST ══════════════════════════════════════════════════════════
+// Debounce pour éviter les re-rendus trop fréquents
+let _renderChatsTimer=null;
+function renderChatsDebounced(f){
+  clearTimeout(_renderChatsTimer);
+  _renderChatsTimer=setTimeout(()=>renderChats(f), 120);
+}
+
 function renderChats(f){
   f=(f||"").toLowerCase();
   const list=document.getElementById("chat-list");
@@ -1073,7 +1151,10 @@ function renderMsgs(c){
     else if(m.type==="video"){
       const src=m.url||m.data||"";
       if(!src){ ct='<span style="color:#999;font-size:13px;">🎬 Vidéo (chargement...)</span>'; }
-      else { ct=`<video controls playsinline preload="metadata" style="max-width:240px;max-height:300px;border-radius:12px;display:block;background:#000;"><source src="${src}">Vidéo non supportée</video>`; }
+      else { ct=`<div style="position:relative;display:inline-block;cursor:pointer;" onclick="openFullscreenVideo('${src}')">
+        <video src="${src}" preload="metadata" style="max-width:240px;max-height:280px;border-radius:12px;display:block;background:#000;" playsinline></video>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.55);border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:none;">▶️</div>
+      </div>`; }
     }
     else if(m.type==="audio"){
       const src = m.data || m.url || "";
@@ -1915,6 +1996,134 @@ function buildEmoji(){
   const p=document.getElementById("emoji-picker");
   EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="ep";b.textContent=e;b.onclick=()=>{document.getElementById("msg-input").value+=e;};p.appendChild(b);});
 }
+// ══ MEDIA PICKER & PREVIEW ════════════════════════════════════════════════
+let pendingFiles = []; // fichiers en attente d'envoi
+let currentFileIndex = 0;
+let isVideoPreview = false;
+
+function showMediaPicker(){
+  document.getElementById("media-picker").classList.add("show");
+}
+function closeMediaPicker(e){
+  if(e && e.target !== document.getElementById("media-picker")) return;
+  document.getElementById("media-picker").classList.remove("show");
+}
+
+// Sélection de plusieurs images
+function sendImages(input){
+  if(!input.files || !input.files.length) return;
+  pendingFiles = Array.from(input.files);
+  input.value = "";
+  isVideoPreview = false;
+  showMediaPreview(0);
+}
+
+// Sélection d'une vidéo
+async function sendFile(input){
+  if(!input.files || !input.files[0] || !activeId) return;
+  const file = input.files[0];
+  input.value = "";
+  if(file.size > 100*1024*1024){showToast("❌ Fichier trop lourd (max 100MB)");return;}
+  isVideoPreview = true;
+  pendingFiles = [file];
+  showMediaPreview(0);
+}
+
+function showMediaPreview(idx){
+  currentFileIndex = idx;
+  const file = pendingFiles[idx];
+  if(!file) return;
+
+  const preview = document.getElementById("media-preview");
+  const img = document.getElementById("media-preview-img");
+  const vid = document.getElementById("media-preview-vid");
+  const strip = document.getElementById("multi-strip");
+  const count = document.getElementById("media-count");
+
+  preview.classList.add("show");
+  document.getElementById("media-caption-inp").value = "";
+
+  // Afficher la miniature du fichier courant
+  const url = URL.createObjectURL(file);
+
+  if(file.type.startsWith("image/")){
+    img.src = url; img.style.display = "block";
+    vid.style.display = "none"; vid.src = "";
+    document.getElementById("media-preview-title").textContent = "📷 Photo";
+  } else {
+    vid.src = url; vid.style.display = "block";
+    img.style.display = "none"; img.src = "";
+    document.getElementById("media-preview-title").textContent = "🎬 Vidéo";
+  }
+
+  // Strip multi-photos
+  if(pendingFiles.length > 1){
+    strip.style.display = "flex"; strip.innerHTML = "";
+    count.textContent = (idx+1)+"/"+pendingFiles.length;
+    pendingFiles.forEach((f,i)=>{
+      const thumb = document.createElement("img");
+      thumb.className = "multi-thumb"+(i===idx?" active":"");
+      thumb.src = URL.createObjectURL(f);
+      thumb.onclick = ()=>showMediaPreview(i);
+      strip.appendChild(thumb);
+    });
+  } else {
+    strip.style.display = "none";
+    count.textContent = "";
+  }
+}
+
+function closeMediaPreview(){
+  document.getElementById("media-preview").classList.remove("show");
+  document.getElementById("media-preview-vid").src = "";
+  document.getElementById("media-preview-img").src = "";
+  pendingFiles = []; currentFileIndex = 0;
+}
+
+async function confirmSendMedia(){
+  const caption = document.getElementById("media-caption-inp").value.trim();
+  const c = contacts.find(x=>x.id===activeId);
+  if(!c || !pendingFiles.length) return;
+
+  closeMediaPreview();
+  showToast("⏳ Envoi en cours...");
+
+  for(let i=0; i<pendingFiles.length; i++){
+    const file = pendingFiles[i];
+    const isImg = file.type.startsWith("image/");
+    const ext = file.name ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
+    const namedFile = new File([file], (isImg?"img":"vid")+"_"+Date.now()+i+"."+ext, {type:file.type});
+    const url = await uploadToStorage(namedFile, isImg?"images":"videos");
+    if(!url) continue;
+
+    const msgData = {
+      sender: myEmail,
+      type: isImg?"image":"video",
+      url: url, data:"",
+      text: caption || (isImg?"📷 Photo":"🎬 Vidéo"),
+      time: getTime(), ts: Date.now(), read: false
+    };
+    if(window._firebaseReady){
+      const chatId = getChatId(c.name);
+      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
+    }
+  }
+  pendingFiles = [];
+  showToast("✅ Envoyé !");
+}
+
+// Plein écran vidéo
+function openFullscreenVideo(src){
+  const fv = document.getElementById("fullscreen-video");
+  document.getElementById("fs-video").src = src;
+  fv.classList.add("show");
+}
+function closeFullscreenVideo(){
+  document.getElementById("fullscreen-video").classList.remove("show");
+  document.getElementById("fs-video").src = "";
+  document.getElementById("fs-video").pause();
+}
+
 // ── LECTEUR AUDIO ────────────────────────────────────────────────────────
 function toggleAudio(id){
   const audio=document.getElementById(id);
