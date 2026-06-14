@@ -1076,12 +1076,16 @@ function renderMsgs(c){
       else { ct=`<video controls playsinline preload="metadata" style="max-width:240px;max-height:300px;border-radius:12px;display:block;background:#000;"><source src="${src}">Vidéo non supportée</video>`; }
     }
     else if(m.type==="audio"){
-      const src=m.url||m.data||"";
-      if(!src){ ct='<span style="color:#999;font-size:13px;">🎤 Vocal (chargement...)</span>'; }
-      else { ct=`<div style="background:rgba(0,0,0,.08);border-radius:14px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-width:200px;max-width:260px;">
-        <span style="font-size:22px;flex-shrink:0;">🎤</span>
-        <audio controls preload="auto" style="flex:1;height:40px;min-width:0;max-width:200px;"><source src="${src}">Audio non supporté</audio>
-      </div>`; }
+      // Priorité : base64 (data) puis URL Cloudinary
+      const src = m.data || m.url || "";
+      if(!src){
+        ct='<span style="color:#999;font-size:13px;">🎤 Vocal (chargement...)</span>';
+      } else {
+        ct=`<div style="background:rgba(0,0,0,.08);border-radius:14px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-width:200px;max-width:260px;">
+          <span style="font-size:22px;flex-shrink:0;">🎤</span>
+          <audio controls preload="auto" style="flex:1;height:40px;min-width:0;max-width:190px;" src="${src}"></audio>
+        </div>`;
+      }
     }
     else ct=esc(m.text||"");
     const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}','${m.id}','${m.from}')">🗑</button>`:"";
@@ -1291,39 +1295,38 @@ function togglePause(){
 function cancelRec(){stopRec();showToast("🗑️ Enregistrement annulé");}
 function sendRec(){
   if(!mediaRecorder)return;
-  mediaRecorder.onstop=async()=>{
-    // Utiliser le même mimeType que celui utilisé à l'enregistrement
+  mediaRecorder.onstop=()=>{
     const mimeType = mediaRecorder.mimeType || "audio/webm";
     const blob = new Blob(audioChunks, {type: mimeType});
     mediaRecorder.stream.getTracks().forEach(t=>t.stop());
     const c = contacts.find(x=>x.id===activeId);
     if(!c || blob.size===0){showToast("❌ Enregistrement vide");return;}
 
-    // Choisir l'extension selon le mimeType réel
-    let ext = "webm";
-    if(mimeType.includes("ogg")) ext = "ogg";
-    else if(mimeType.includes("mp4")) ext = "mp4";
+    showToast("⏳ Envoi du vocal...");
 
-    const file = new File([blob], "voice_"+Date.now()+"."+ext, {type: mimeType});
-    console.log("Audio blob size:", blob.size, "type:", mimeType);
-
-    const url = await uploadToStorage(file, "audio");
-    if(!url) return;
-
-    const msgData = {
-      sender: myEmail, type: "audio",
-      url: url, mimeType: mimeType,
-      text: "🎤 Message vocal",
-      time: getTime(), ts: Date.now(), read: false
+    // Convertir en base64 pour stocker directement dans Firebase
+    const reader = new FileReader();
+    reader.onloadend = ()=>{
+      const base64 = reader.result; // "data:audio/webm;base64,..."
+      const msgData = {
+        sender: myEmail,
+        type: "audio",
+        data: base64,    // stocké en base64 dans Firebase
+        url: "",
+        text: "🎤 Message vocal",
+        time: getTime(), ts: Date.now(), read: false
+      };
+      if(window._firebaseReady){
+        const chatId = getChatId(c.name);
+        window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
+        showToast("🎤 Vocal envoyé !");
+      }else{
+        c.msgs.push({id:"local_"+Date.now(), from:"me", ...msgData});
+        renderMsgs(c);
+        saveCacheToLocal();
+      }
     };
-    if(window._firebaseReady){
-      const chatId = getChatId(c.name);
-      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
-      showToast("🎤 Vocal envoyé !");
-    }else{
-      c.msgs.push({id:"local_"+Date.now(),from:"me",...msgData});
-      renderMsgs(c);
-    }
+    reader.readAsDataURL(blob);
   };
   mediaRecorder.stop();
   stopRec(false);
