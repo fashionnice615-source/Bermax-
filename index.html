@@ -1153,15 +1153,14 @@ function renderMsgs(c){
     }
     else if(m.type==="video"){
       const src=m.url||m.data||"";
-      if(!src){ ct='<span style="color:#999;font-size:13px;">🎬 Vidéo (chargement...)</span>'; }
+      if(!src){ ct='<span style="color:#999;font-size:13px;">🎬 Vidéo...</span>'; }
       else {
-        // Stocker l'URL dans un attribut data pour éviter les problèmes de quotes dans onclick
-        const vidId="vid_"+Math.random().toString(36).substr(2,6);
-        ct=`<div style="position:relative;display:inline-block;cursor:pointer;" id="${vidId}" data-src="${src.replace(/"/g,'&quot;')}" onclick="openFullscreenVideo(document.getElementById('${vidId}').dataset.src)">
-          <video preload="metadata" style="max-width:240px;max-height:280px;border-radius:12px;display:block;background:#000;width:240px;height:160px;object-fit:cover;" playsinline>
-            <source src="${src}" type="${m.mimeType||'video/mp4'}">
-          </video>
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.6);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:26px;pointer-events:none;">▶️</div>
+        const vidId="v"+Date.now()+Math.floor(Math.random()*9999);
+        const safeUrl=src.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+        ct=`<div id="${vidId}" style="position:relative;display:inline-block;cursor:pointer;border-radius:12px;overflow:hidden;background:#000;min-width:180px;min-height:120px;" onclick="openFullscreenVideo('${safeUrl}')">
+          <video id="${vidId}_v" src="${src}" preload="metadata" playsinline muted style="max-width:240px;max-height:200px;display:block;border-radius:12px;" onloadedmetadata="genThumb('${vidId}')"></video>
+          <canvas id="${vidId}_c" style="display:none;"></canvas>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.65);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;">▶️</div>
         </div>`;
       }
     }
@@ -2121,16 +2120,43 @@ async function confirmSendMedia(){
   showToast("✅ Envoyé !");
 }
 
+// Générer miniature vidéo
+function genThumb(vidId){
+  const video = document.getElementById(vidId+"_v");
+  const canvas = document.getElementById(vidId+"_c");
+  if(!video||!canvas)return;
+  try{
+    video.currentTime = 0.1;
+    video.onseeked = ()=>{
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      const thumb = canvas.toDataURL("image/jpeg", 0.7);
+      const img = document.createElement("img");
+      img.src = thumb;
+      img.style.cssText = "max-width:240px;max-height:200px;border-radius:12px;display:block;";
+      video.style.display = "none";
+      video.parentNode.insertBefore(img, video);
+      canvas.remove();
+    };
+  }catch(e){ console.log("thumb error:", e); }
+}
+
 // Plein écran vidéo
 function openFullscreenVideo(src){
+  if(!src){showToast("❌ Vidéo non disponible");return;}
   const fv = document.getElementById("fullscreen-video");
-  document.getElementById("fs-video").src = src;
+  const fsv = document.getElementById("fs-video");
+  fsv.src = src;
   fv.classList.add("show");
+  fsv.play().catch(()=>{});
 }
 function closeFullscreenVideo(){
   document.getElementById("fullscreen-video").classList.remove("show");
-  document.getElementById("fs-video").src = "";
-  document.getElementById("fs-video").pause();
+  const fsv = document.getElementById("fs-video");
+  fsv.pause();
+  fsv.src = "";
 }
 
 // ── LECTEUR AUDIO ────────────────────────────────────────────────────────
