@@ -904,6 +904,7 @@ function loadCacheFromLocal(){
       const chatsData=JSON.parse(savedChats);
       chatsData.forEach(c=>{
         if(!contacts.find(x=>x.id===c.id)) contacts.push(c);
+        // Les msgs sont déjà complets (avec url) dans le cache
       });
       renderChats(document.getElementById("search-inp").value);
     }
@@ -954,7 +955,11 @@ function subscribeToChat(c){
       msgs.push({
         id:child.key,
         from: v.sender===myEmail ? "me" : "them",
-        text:v.text, type:v.type, data:v.data,
+        text:v.text, type:v.type,
+        url:v.url||"",        // URL Cloudinary
+        data:v.data||"",      // fallback base64
+        mimeType:v.mimeType||"",
+        ts:v.ts||0,
         time:v.time, read:v.read,
         del_all:v.del_all, del_me:v.del_me
       });
@@ -1057,23 +1062,26 @@ function renderMsgs(c){
     div.className="msg "+(m.from==="me"?"me":"them");
     const tick=getTickHtml(m,c);
     let ct="";
-    if(m.del_all)ct='<span class="del-msg">🚫 Ce message a été supprimé</span>';
+    if(m.del_all){
+      ct='<span class="del-msg">🚫 Ce message a été supprimé</span>';
+    }
     else if(m.type==="image"){
       const src=m.url||m.data||"";
-      ct=`<img src="${src}" onclick="openMedia('${src}','image')" style="max-width:220px;max-height:220px;border-radius:12px;display:block;cursor:pointer;"/>`;
+      if(!src){ ct='<span style="color:#999;font-size:13px;">📷 Image (chargement...)</span>'; }
+      else { ct=`<img src="${src}" onclick="openMedia('${src}','image')" style="max-width:240px;max-height:240px;border-radius:12px;display:block;cursor:pointer;" onerror="this.src='';this.alt='❌ Image non disponible'"/>`; }
     }
     else if(m.type==="video"){
       const src=m.url||m.data||"";
-      ct=`<video src="${src}" controls playsinline preload="metadata" style="max-width:220px;max-height:300px;border-radius:12px;display:block;background:#000;"></video>`;
+      if(!src){ ct='<span style="color:#999;font-size:13px;">🎬 Vidéo (chargement...)</span>'; }
+      else { ct=`<video controls playsinline preload="metadata" style="max-width:240px;max-height:300px;border-radius:12px;display:block;background:#000;"><source src="${src}">Vidéo non supportée</video>`; }
     }
     else if(m.type==="audio"){
       const src=m.url||m.data||"";
-      ct=`<div style="background:rgba(0,0,0,.06);border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:8px;min-width:200px;">
-        <span style="font-size:22px;">🎤</span>
-        <audio src="${src}" controls controlsList="nodownload" style="flex:1;height:36px;min-width:0;border-radius:20px;outline:none;" preload="auto">
-          Votre navigateur ne supporte pas l'audio.
-        </audio>
-      </div>`;
+      if(!src){ ct='<span style="color:#999;font-size:13px;">🎤 Vocal (chargement...)</span>'; }
+      else { ct=`<div style="background:rgba(0,0,0,.08);border-radius:14px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-width:200px;max-width:260px;">
+        <span style="font-size:22px;flex-shrink:0;">🎤</span>
+        <audio controls preload="auto" style="flex:1;height:40px;min-width:0;max-width:200px;"><source src="${src}">Audio non supporté</audio>
+      </div>`; }
     }
     else ct=esc(m.text||"");
     const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}','${m.id}','${m.from}')">🗑</button>`:"";
@@ -1164,7 +1172,7 @@ async function sendFile(input){
   const url=await uploadToStorage(namedFile, folder);
   if(!url)return;
 
-  const msg={
+  const msgData={
     sender:myEmail,
     type:isImg?"image":"video",
     url:url,
@@ -1173,8 +1181,11 @@ async function sendFile(input){
   };
   if(window._firebaseReady){
     const chatId=getChatId(c.name);
-    window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+    window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msgData);
     showToast(isImg?"📷 Image envoyée !":"🎥 Vidéo envoyée !");
+  }else{
+    c.msgs.push({id:"local_"+Date.now(),from:"me",...msgData});
+    renderMsgs(c);
   }
 }
 function openMedia(src,type){
@@ -1299,7 +1310,7 @@ function sendRec(){
     const url = await uploadToStorage(file, "audio");
     if(!url) return;
 
-    const msg = {
+    const msgData = {
       sender: myEmail, type: "audio",
       url: url, mimeType: mimeType,
       text: "🎤 Message vocal",
@@ -1307,8 +1318,11 @@ function sendRec(){
     };
     if(window._firebaseReady){
       const chatId = getChatId(c.name);
-      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msg);
+      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
       showToast("🎤 Vocal envoyé !");
+    }else{
+      c.msgs.push({id:"local_"+Date.now(),from:"me",...msgData});
+      renderMsgs(c);
     }
   };
   mediaRecorder.stop();
