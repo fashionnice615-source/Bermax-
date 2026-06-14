@@ -1740,6 +1740,20 @@ function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g
 window.addEventListener("resize",()=>{if(activeId)scrollBot();});
 
 // ══ INIT ════════════════════════════════════════════════════════════════
+// Demander les permissions micro/caméra au démarrage (important pour APK Android)
+async function requestMediaPermissions(){
+  try{
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+      stream.getTracks().forEach(t=>t.stop()); // On arrête tout de suite, juste pour avoir la permission
+      console.log("✅ Permission micro accordée");
+    }
+  }catch(e){
+    console.log("⚠️ Permission micro:",e.name);
+  }
+}
+requestMediaPermissions();
+
 buildEmoji();
 renderChats();
 renderContacts();
