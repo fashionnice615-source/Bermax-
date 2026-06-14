@@ -2091,33 +2091,45 @@ function closeMediaPreview(){
 async function confirmSendMedia(){
   const caption = document.getElementById("media-caption-inp").value.trim();
   const c = contacts.find(x=>x.id===activeId);
-  if(!c || !pendingFiles.length) return;
+  if(!c || !pendingFiles.length){showToast("❌ Aucun fichier sélectionné");return;}
 
-  closeMediaPreview();
+  // Copier les fichiers AVANT de fermer (closeMediaPreview vide pendingFiles!)
+  const filesToSend = [...pendingFiles];
+  const contactToSend = c;
+
+  closeMediaPreview(); // vide pendingFiles[] - mais on a déjà copié
   showToast("⏳ Envoi en cours...");
 
-  for(let i=0; i<pendingFiles.length; i++){
-    const file = pendingFiles[i];
+  for(let i=0; i<filesToSend.length; i++){
+    const file = filesToSend[i];
     const isImg = file.type.startsWith("image/");
-    const ext = file.name ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
-    const namedFile = new File([file], (isImg?"img":"vid")+"_"+Date.now()+i+"."+ext, {type:file.type});
+    const ext = (file.name && file.name.includes(".")) ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
+    const fname = (isImg?"img":"vid")+"_"+Date.now()+"_"+i+"."+ext;
+    const namedFile = new File([file], fname, {type: file.type});
     const url = await uploadToStorage(namedFile, isImg?"images":"videos");
-    if(!url) continue;
+    if(!url){showToast("❌ Échec upload fichier "+(i+1));continue;}
 
     const msgData = {
       sender: myEmail,
-      type: isImg?"image":"video",
-      url: url, data:"",
-      text: caption || (isImg?"📷 Photo":"🎬 Vidéo"),
-      time: getTime(), ts: Date.now(), read: false
+      type: isImg ? "image" : "video",
+      url: url,
+      data: "",
+      mimeType: file.type,
+      text: caption || (isImg ? "📷 Photo" : "🎬 Vidéo"),
+      time: getTime(),
+      ts: Date.now(),
+      read: false
     };
+
     if(window._firebaseReady){
-      const chatId = getChatId(c.name);
+      const chatId = getChatId(contactToSend.name);
       window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
+      showToast(isImg ? "📷 Photo envoyée !" : "🎬 Vidéo envoyée !");
+    } else {
+      contactToSend.msgs.push({id:"local_"+Date.now()+"_"+i, from:"me", ...msgData});
+      renderMsgs(contactToSend);
     }
   }
-  pendingFiles = [];
-  showToast("✅ Envoyé !");
 }
 
 // Générer miniature vidéo
