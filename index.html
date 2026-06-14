@@ -1027,9 +1027,9 @@ function subscribeToChat(c){
         id:child.key,
         from: v.sender===myEmail ? "me" : "them",
         text:v.text, type:v.type,
-        url:v.url||"",        // URL Cloudinary
-        data:v.data||"",      // fallback base64
-        mimeType:v.mimeType||"",
+        url:v.url||"",
+        data:v.data||"",
+        mimeType:v.mimeType||"video/mp4",
         ts:v.ts||0,
         time:v.time, read:v.read,
         del_all:v.del_all, del_me:v.del_me
@@ -1146,15 +1146,24 @@ function renderMsgs(c){
     else if(m.type==="image"){
       const src=m.url||m.data||"";
       if(!src){ ct='<span style="color:#999;font-size:13px;">📷 Image (chargement...)</span>'; }
-      else { ct=`<img src="${src}" onclick="openMedia('${src}','image')" style="max-width:240px;max-height:240px;border-radius:12px;display:block;cursor:pointer;" onerror="this.src='';this.alt='❌ Image non disponible'"/>`; }
+      else {
+        const imgId="img_"+Math.random().toString(36).substr(2,6);
+        ct=`<img src="${src}" id="${imgId}" data-src="${src.replace(/"/g,'&quot;')}" onclick="openMedia(document.getElementById('${imgId}').dataset.src,'image')" style="max-width:240px;max-height:240px;border-radius:12px;display:block;cursor:pointer;" onerror="this.alt='❌ Image non disponible'"/>`;
+      }
     }
     else if(m.type==="video"){
       const src=m.url||m.data||"";
       if(!src){ ct='<span style="color:#999;font-size:13px;">🎬 Vidéo (chargement...)</span>'; }
-      else { ct=`<div style="position:relative;display:inline-block;cursor:pointer;" onclick="openFullscreenVideo('${src}')">
-        <video src="${src}" preload="metadata" style="max-width:240px;max-height:280px;border-radius:12px;display:block;background:#000;" playsinline></video>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.55);border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:none;">▶️</div>
-      </div>`; }
+      else {
+        // Stocker l'URL dans un attribut data pour éviter les problèmes de quotes dans onclick
+        const vidId="vid_"+Math.random().toString(36).substr(2,6);
+        ct=`<div style="position:relative;display:inline-block;cursor:pointer;" id="${vidId}" data-src="${src.replace(/"/g,'&quot;')}" onclick="openFullscreenVideo(document.getElementById('${vidId}').dataset.src)">
+          <video preload="metadata" style="max-width:240px;max-height:280px;border-radius:12px;display:block;background:#000;width:240px;height:160px;object-fit:cover;" playsinline>
+            <source src="${src}" type="${m.mimeType||'video/mp4'}">
+          </video>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.6);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:26px;pointer-events:none;">▶️</div>
+        </div>`;
+      }
     }
     else if(m.type==="audio"){
       const src = m.data || m.url || "";
