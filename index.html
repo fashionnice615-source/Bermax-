@@ -2005,11 +2005,12 @@ function buildEmoji(){
   EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="ep";b.textContent=e;b.onclick=()=>{document.getElementById("msg-input").value+=e;};p.appendChild(b);});
 }
 // ══ MEDIA PICKER & PREVIEW ════════════════════════════════════════════════
-let pendingFiles = []; // fichiers en attente d'envoi
-let currentFileIndex = 0;
-let isVideoPreview = false;
+let _pendingFiles = [];
+let _pendingContact = null;
+let _currentIdx = 0;
 
 function showMediaPicker(){
+  if(!activeId){showToast("⚠️ Ouvre une conversation d\'abord");return;}
   document.getElementById("media-picker").classList.add("show");
 }
 function closeMediaPicker(e){
@@ -2017,63 +2018,58 @@ function closeMediaPicker(e){
   document.getElementById("media-picker").classList.remove("show");
 }
 
-// Sélection de plusieurs images
 function sendImages(input){
-  if(!input.files || !input.files.length) return;
-  pendingFiles = Array.from(input.files);
+  if(!input.files || !input.files.length || !activeId) return;
+  _pendingFiles = Array.from(input.files);
+  _pendingContact = contacts.find(x=>x.id===activeId);
   input.value = "";
-  isVideoPreview = false;
-  showMediaPreview(0);
+  _showPreview(0);
 }
 
-// Sélection d'une vidéo
-async function sendFile(input){
+function sendFile(input){
   if(!input.files || !input.files[0] || !activeId) return;
   const file = input.files[0];
+  if(file.size > 100*1024*1024){showToast("❌ Max 100MB");input.value="";return;}
+  _pendingFiles = [file];
+  _pendingContact = contacts.find(x=>x.id===activeId);
   input.value = "";
-  if(file.size > 100*1024*1024){showToast("❌ Fichier trop lourd (max 100MB)");return;}
-  isVideoPreview = true;
-  pendingFiles = [file];
-  showMediaPreview(0);
+  _showPreview(0);
 }
 
-function showMediaPreview(idx){
-  currentFileIndex = idx;
-  const file = pendingFiles[idx];
+function _showPreview(idx){
+  _currentIdx = idx;
+  const file = _pendingFiles[idx];
   if(!file) return;
 
-  const preview = document.getElementById("media-preview");
-  const img = document.getElementById("media-preview-img");
-  const vid = document.getElementById("media-preview-vid");
-  const strip = document.getElementById("multi-strip");
-  const count = document.getElementById("media-count");
-
-  preview.classList.add("show");
+  document.getElementById("media-preview").classList.add("show");
   document.getElementById("media-caption-inp").value = "";
 
-  // Afficher la miniature du fichier courant
-  const url = URL.createObjectURL(file);
+  const objUrl = URL.createObjectURL(file);
+  const isImg = file.type.startsWith("image/");
+  const img = document.getElementById("media-preview-img");
+  const vid = document.getElementById("media-preview-vid");
 
-  if(file.type.startsWith("image/")){
-    img.src = url; img.style.display = "block";
+  if(isImg){
+    img.src = objUrl; img.style.display = "block";
     vid.style.display = "none"; vid.src = "";
     document.getElementById("media-preview-title").textContent = "📷 Photo";
   } else {
-    vid.src = url; vid.style.display = "block";
+    vid.src = objUrl; vid.style.display = "block";
     img.style.display = "none"; img.src = "";
     document.getElementById("media-preview-title").textContent = "🎬 Vidéo";
   }
 
-  // Strip multi-photos
-  if(pendingFiles.length > 1){
+  const strip = document.getElementById("multi-strip");
+  const count = document.getElementById("media-count");
+  if(_pendingFiles.length > 1){
     strip.style.display = "flex"; strip.innerHTML = "";
-    count.textContent = (idx+1)+"/"+pendingFiles.length;
-    pendingFiles.forEach((f,i)=>{
-      const thumb = document.createElement("img");
-      thumb.className = "multi-thumb"+(i===idx?" active":"");
-      thumb.src = URL.createObjectURL(f);
-      thumb.onclick = ()=>showMediaPreview(i);
-      strip.appendChild(thumb);
+    count.textContent = (idx+1)+"/"+_pendingFiles.length;
+    _pendingFiles.forEach((f,i)=>{
+      const th = document.createElement("img");
+      th.className = "multi-thumb"+(i===idx?" active":"");
+      th.src = URL.createObjectURL(f);
+      th.onclick = ()=>_showPreview(i);
+      strip.appendChild(th);
     });
   } else {
     strip.style.display = "none";
@@ -2085,49 +2081,51 @@ function closeMediaPreview(){
   document.getElementById("media-preview").classList.remove("show");
   document.getElementById("media-preview-vid").src = "";
   document.getElementById("media-preview-img").src = "";
-  pendingFiles = []; currentFileIndex = 0;
+  _pendingFiles = []; _pendingContact = null; _currentIdx = 0;
 }
 
 async function confirmSendMedia(){
+  if(!_pendingFiles.length || !_pendingContact){
+    showToast("❌ Aucun fichier");
+    return;
+  }
+  // Copier tout avant de fermer
+  const files = [..._pendingFiles];
+  const contact = _pendingContact;
   const caption = document.getElementById("media-caption-inp").value.trim();
-  const c = contacts.find(x=>x.id===activeId);
-  if(!c || !pendingFiles.length){showToast("❌ Aucun fichier sélectionné");return;}
 
-  // Copier les fichiers AVANT de fermer (closeMediaPreview vide pendingFiles!)
-  const filesToSend = [...pendingFiles];
-  const contactToSend = c;
+  // Fermer l'aperçu proprement
+  document.getElementById("media-preview").classList.remove("show");
+  document.getElementById("media-preview-vid").src = "";
+  document.getElementById("media-preview-img").src = "";
+  _pendingFiles = []; _pendingContact = null;
 
-  closeMediaPreview(); // vide pendingFiles[] - mais on a déjà copié
-  showToast("⏳ Envoi en cours...");
-
-  for(let i=0; i<filesToSend.length; i++){
-    const file = filesToSend[i];
+  for(let i = 0; i < files.length; i++){
+    const file = files[i];
     const isImg = file.type.startsWith("image/");
-    const ext = (file.name && file.name.includes(".")) ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
-    const fname = (isImg?"img":"vid")+"_"+Date.now()+"_"+i+"."+ext;
-    const namedFile = new File([file], fname, {type: file.type});
-    const url = await uploadToStorage(namedFile, isImg?"images":"videos");
-    if(!url){showToast("❌ Échec upload fichier "+(i+1));continue;}
+    showToast("⏳ Envoi "+(i+1)+"/"+files.length+"...");
 
-    const msgData = {
+    const ext = file.name && file.name.includes(".") ? file.name.split('.').pop() : (isImg?"jpg":"mp4");
+    const named = new File([file], (isImg?"img":"vid")+"_"+Date.now()+"_"+i+"."+ext, {type:file.type});
+    const url = await uploadToStorage(named, isImg?"images":"videos");
+    if(!url){ showToast("❌ Erreur upload "+(i+1)); continue; }
+
+    const msg = {
       sender: myEmail,
       type: isImg ? "image" : "video",
-      url: url,
-      data: "",
+      url: url, data: "",
       mimeType: file.type,
       text: caption || (isImg ? "📷 Photo" : "🎬 Vidéo"),
-      time: getTime(),
-      ts: Date.now(),
-      read: false
+      time: getTime(), ts: Date.now(), read: false
     };
 
     if(window._firebaseReady){
-      const chatId = getChatId(contactToSend.name);
-      window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msgData);
+      const chatId = getChatId(contact.name);
+      await window._push(window._ref(window._db,"chats/"+chatId+"/msgs"), msg);
       showToast(isImg ? "📷 Photo envoyée !" : "🎬 Vidéo envoyée !");
     } else {
-      contactToSend.msgs.push({id:"local_"+Date.now()+"_"+i, from:"me", ...msgData});
-      renderMsgs(contactToSend);
+      contact.msgs.push({id:"local_"+Date.now()+"_"+i, from:"me", ...msg});
+      renderMsgs(contact);
     }
   }
 }
