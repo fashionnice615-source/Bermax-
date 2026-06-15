@@ -324,7 +324,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
         <button class="call-btn" onclick="startCall(false)">📞</button>
         <button class="vid-btn" onclick="startCall(true)">📹</button>
         <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔔</button>
-        <button class="ic" onclick="showSettings()">⋮</button>
+        <button class="ic" onclick="showChatMenu()">⋮</button>
       </div>
     </div>
     <div id="messages"></div>
@@ -532,6 +532,36 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   </div>
 </div>
 
+<!-- CHAT OPTIONS MENU -->
+<div id="chat-menu" onclick="if(event.target===this)closeChatMenu()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:4000;align-items:flex-start;justify-content:flex-end;">
+  <div style="background:#fff;border-radius:0 0 14px 14px;margin-top:56px;margin-right:8px;min-width:200px;box-shadow:0 4px 20px rgba(0,0,0,.15);overflow:hidden;">
+    <button onclick="saveContactToPhone()" style="width:100%;padding:14px 20px;background:none;border:none;border-bottom:1px solid #f0f2f5;font-family:var(--F);font-size:14px;font-weight:600;color:#111b21;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
+      <span>💾</span> Enregistrer dans contacts
+    </button>
+    <button onclick="viewContactInfo()" style="width:100%;padding:14px 20px;background:none;border:none;border-bottom:1px solid #f0f2f5;font-family:var(--F);font-size:14px;font-weight:600;color:#111b21;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
+      <span>👤</span> Voir le profil
+    </button>
+    <button onclick="clearChatHistory()" style="width:100%;padding:14px 20px;background:none;border:none;font-family:var(--F);font-size:14px;font-weight:600;color:#ef4444;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;">
+      <span>🗑️</span> Vider la discussion
+    </button>
+  </div>
+</div>
+
+<!-- COPY MESSAGE SHEET -->
+<div id="copy-sheet" onclick="if(event.target===this)closeCopySheet()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:4000;align-items:flex-end;justify-content:center;">
+  <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:12px 12px 30px;display:flex;flex-direction:column;gap:6px;animation:sup .2s ease;">
+    <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 8px;"></div>
+    <div id="copy-preview" style="background:#f0f2f5;border-radius:12px;padding:12px 14px;font-size:13px;color:#111b21;margin-bottom:4px;max-height:80px;overflow:hidden;text-overflow:ellipsis;border-left:4px solid #25d366;"></div>
+    <button onclick="doCopyMsg()" style="width:100%;padding:14px;background:none;border:none;border-radius:13px;font-family:var(--F);font-size:15px;font-weight:700;color:#111b21;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;">
+      <span style="font-size:20px;width:36px;height:36px;background:#f0f2f5;border-radius:50%;display:flex;align-items:center;justify-content:center;">📋</span> Copier le message
+    </button>
+    <button onclick="openDel(copyPending.cId,copyPending.mId,copyPending.from)" style="width:100%;padding:14px;background:none;border:none;border-radius:13px;font-family:var(--F);font-size:15px;font-weight:700;color:#ef4444;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;" id="copy-sheet-del">
+      <span style="font-size:20px;width:36px;height:36px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">🗑️</span> Supprimer
+    </button>
+    <button onclick="closeCopySheet()" style="width:100%;padding:13px;background:#f0f2f5;border:none;border-radius:13px;font-family:var(--F);font-size:14px;font-weight:700;color:#667781;cursor:pointer;">Annuler</button>
+  </div>
+</div>
+
 <!-- NOTIFICATION BANNER -->
 <div id="notif-banner" style="display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1f2c34;border-radius:14px;padding:12px 16px;z-index:9998;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:92%;cursor:pointer;">
   <div style="width:36px;height:36px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💬</div>
@@ -544,7 +574,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="2.1.0";
+const APP_VERSION="2.2.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){if(window.caches)caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)));localStorage.setItem("bv",APP_VERSION);location.reload(true);}
@@ -811,7 +841,8 @@ function renderMsgs(c){
     }
     else{ct=esc(m.text||"");}
     const db=(!m.del_all&&!m.del_me)?`<button class="dbtn" onclick="openDel('${c.id}','${m.id}','${m.from}')">🗑</button>`:"";
-    div.innerHTML=`<div class="bbl" ontouchstart="tst(event,'${c.id}','${m.id}','${m.from}')" ontouchend="tte()" oncontextmenu="openDel('${c.id}','${m.id}','${m.from}');return false;">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
+    const msgText=m.text||"";
+    div.innerHTML=`<div class="bbl" ontouchstart="tst(event,'${c.id}','${m.id}','${m.from}','${msgText.replace(/'/g,"\\'")}') " ontouchend="tte()" oncontextmenu="openCopySheet('${c.id}','${m.id}','${m.from}','${msgText.replace(/'/g,"\\'")}');return false;">${ct}</div><div class="mt">${m.time||""} ${tick} ${db}</div>`;
     box.appendChild(div);
   });
   scrollBot();
@@ -850,7 +881,15 @@ function smartSend(){
   else if(mediaRecorder&&mediaRecorder.state!=="inactive"){sendRec();}
   else{startRec();}
 }
-function handleKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function handleKey(e){
+  // Entrée simple = saut de ligne (comme WhatsApp)
+  // Shift+Entrée aussi = saut de ligne
+  // Le bouton ➤ sert à envoyer
+  if(e.key==="Enter"){
+    // Ne rien faire de spécial - laisser le comportement naturel (nouvelle ligne)
+    autoResize(e.target);
+  }
+}
 function autoResize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,110)+"px";}
 
 // ══ MEDIA PICKER ══
@@ -985,8 +1024,8 @@ function sendRec(){
 }
 
 // ══ DELETE ══
-let _tt=null;
-function tst(e,cId,mId,from){_tt=setTimeout(()=>openDel(cId,mId,from),500);}
+// _tt already defined in chat menu section
+function tst(e,cId,mId,from,text){_tt=setTimeout(()=>openCopySheet(cId,mId,from,text),500);}
 function tte(){clearTimeout(_tt);}
 function openDel(cId,mId,from){delPending={cId,mId,from};document.getElementById("del-all-btn").style.display=from==="me"?"flex":"none";document.getElementById("del-modal").classList.add("show");}
 function closeDel(){document.getElementById("del-modal").classList.remove("show");delPending={cId:null,mId:null,from:null};}
@@ -1197,6 +1236,83 @@ function toggleMute(){const btn=document.getElementById("mute-btn");btn.classLis
 function buildEmoji(){const p=document.getElementById("emoji-picker");EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="ep";b.textContent=e;b.onclick=()=>{document.getElementById("msg-input").value+=e;updateSendBtn();};p.appendChild(b);});}
 function toggleEmoji(){emojiOpen=!emojiOpen;document.getElementById("emoji-picker").classList.toggle("show",emojiOpen);}
 document.addEventListener("click",e=>{if(!e.target.closest(".emj-btn")&&!e.target.closest("#emoji-picker")){emojiOpen=false;document.getElementById("emoji-picker").classList.remove("show");}});
+
+// ══ CHAT MENU ══
+function showChatMenu(){
+  document.getElementById("chat-menu").style.display="flex";
+}
+function closeChatMenu(){
+  document.getElementById("chat-menu").style.display="none";
+}
+
+// Enregistrer contact dans le téléphone
+function saveContactToPhone(){
+  closeChatMenu();
+  if(!activeId)return;
+  const c=contacts.find(x=>x.id===activeId);if(!c)return;
+  const name=dispName(c);
+  const email=c.email||c.name||"";
+  // Utiliser vCard pour enregistrer dans les contacts du téléphone
+  const vcard=`BEGIN:VCARD
+VERSION:3.0
+FN:${name}
+EMAIL:${email}
+NOTE:Contact Bermax
+END:VCARD`;
+  const blob=new Blob([vcard],{type:"text/vcard"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=name.replace(/[^a-zA-Z0-9]/g,"_")+".vcf";
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast("💾 Contact téléchargé ! Ouvre le fichier .vcf pour l'enregistrer");
+}
+
+function viewContactInfo(){
+  closeChatMenu();
+  if(!activeId)return;
+  const c=contacts.find(x=>x.id===activeId);if(!c)return;
+  showToast("👤 "+dispName(c)+" — "+c.status);
+}
+
+function clearChatHistory(){
+  closeChatMenu();
+  if(!activeId)return;
+  const c=contacts.find(x=>x.id===activeId);if(!c)return;
+  if(!confirm("Vider la discussion avec "+dispName(c)+" ?"))return;
+  c.msgs=[];renderMsgs(c);saveCache();
+  showToast("🗑️ Discussion vidée");
+}
+
+// ══ COPY MESSAGE ══
+let copyPending={cId:null,mId:null,from:null,text:""};
+let _tt=null;
+
+function openCopySheet(cId,mId,from,text){
+  copyPending={cId,mId,from,text};
+  document.getElementById("copy-preview").textContent=text||"(média)";
+  document.getElementById("copy-sheet-del").onclick=()=>{closeCopySheet();openDel(cId,mId,from);};
+  document.getElementById("copy-sheet").style.display="flex";
+}
+function closeCopySheet(){
+  document.getElementById("copy-sheet").style.display="none";
+  copyPending={cId:null,mId:null,from:null,text:""};
+}
+function doCopyMsg(){
+  if(copyPending.text){
+    navigator.clipboard.writeText(copyPending.text).then(()=>{
+      showToast("📋 Message copié !");
+    }).catch(()=>{
+      // Fallback si clipboard API non disponible
+      const el=document.createElement("textarea");
+      el.value=copyPending.text;document.body.appendChild(el);
+      el.select();document.execCommand("copy");document.body.removeChild(el);
+      showToast("📋 Message copié !");
+    });
+  }else{showToast("❌ Impossible de copier un média");}
+  closeCopySheet();
+}
 
 // ══ RINGTONE ══
 let ringtoneInterval=null;
