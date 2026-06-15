@@ -17,20 +17,20 @@ window._firebaseReady=true;window.dispatchEvent(new Event("firebaseReady"));
 </script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-:root{--bg:#0d1117;--side:#111820;--hd:#141f2b;--ac:#25d366;--ac2:#128c7e;--tx:#e8edf2;--mu:#7a8fa6;--br:#1e2d3d;--inp:#1c2a38;--hov:#1a2535;--bme:#1a6b3c;--bthem:#1c2a38;--F:'Nunito',sans-serif;}
+:root{--bg:#f0f2f5;--side:#ffffff;--hd:#ffffff;--ac:#25d366;--ac2:#128c7e;--tx:#111b21;--mu:#667781;--br:#e9edef;--inp:#f0f2f5;--hov:#f5f6f6;--bme:#d9fdd3;--bthem:#ffffff;--F:'Nunito',sans-serif;}
 body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;display:flex;overflow:hidden;}
 
 /* SIDEBAR */
 #sidebar{width:340px;min-width:280px;background:var(--side);border-right:1px solid var(--br);display:flex;flex-direction:column;transition:transform .3s;}
-#top-bar{background:var(--bg);padding:4px 14px;display:flex;justify-content:flex-end;align-items:center;border-bottom:1px solid var(--br);}
-#lang-btn{background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:10px;color:var(--tx);}
-.s-hd{background:var(--hd);padding:11px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--br);}
-.my-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden;}
-.s-hd h1{font-size:20px;font-weight:800;flex:1;background:linear-gradient(90deg,var(--ac),#7fffd4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.ic{background:none;border:none;color:var(--mu);font-size:18px;cursor:pointer;padding:5px;border-radius:50%;transition:.2s;}
-.ic:hover{background:var(--hov);color:var(--ac);}
-.srch{padding:8px 12px;border-bottom:1px solid var(--br);position:relative;}
-.srch input{width:100%;padding:8px 12px 8px 34px;background:var(--inp);border:1px solid var(--br);border-radius:25px;color:var(--tx);font-family:var(--F);font-size:13px;outline:none;}
+#top-bar{background:#25d366;padding:4px 14px;display:flex;justify-content:flex-end;align-items:center;}
+#lang-btn{background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:10px;color:#fff;}
+.s-hd{background:#25d366;padding:11px 14px;display:flex;align-items:center;gap:10px;}
+.my-av{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#25d366;cursor:pointer;flex-shrink:0;overflow:hidden;}
+.s-hd h1{font-size:20px;font-weight:800;flex:1;color:#fff;}
+.ic{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:5px;border-radius:50%;transition:.2s;}
+.ic:hover{background:rgba(255,255,255,.15);color:#fff;}
+.srch{padding:8px 12px;border-bottom:1px solid #e9edef;position:relative;background:#f0f2f5;}
+.srch input{width:100%;padding:8px 12px 8px 34px;background:#fff;border:1px solid #e9edef;border-radius:25px;color:#111b21;font-family:var(--F);font-size:13px;outline:none;}
 .srch input:focus{border-color:var(--ac);}
 .srch::before{content:'🔍';position:absolute;left:22px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;}
 #chat-list{flex:1;overflow-y:auto;}
@@ -42,11 +42,11 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 .av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;position:relative;color:#fff;overflow:hidden;}
 .av .dot{width:12px;height:12px;background:var(--ac);border-radius:50%;border:2px solid var(--side);position:absolute;bottom:1px;right:1px;}
 .cm{flex:1;min-width:0;}
-.cn{font-weight:700;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cp{font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cn{font-weight:700;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111b21;}
+.cp{font-size:12px;color:#667781;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ci-r{text-align:right;flex-shrink:0;}
-.ct{font-size:11px;color:var(--mu);margin-bottom:3px;}
-.bdg{background:var(--ac);color:#000;font-size:11px;font-weight:800;border-radius:10px;padding:2px 6px;}
+.ct{font-size:11px;color:#667781;margin-bottom:3px;}
+.bdg{background:var(--ac);color:#fff;font-size:11px;font-weight:800;border-radius:10px;padding:2px 7px;}
 
 /* CONTACTS */
 #contacts-panel{flex:1;display:none;flex-direction:column;overflow:hidden;}
@@ -60,8 +60,8 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 .cmb{background:var(--ac);border:none;border-radius:50%;width:32px;height:32px;color:#000;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
 /* BOTTOM NAV */
-#bnav{display:flex;background:var(--hd);border-top:1px solid var(--br);}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--mu);font-family:var(--F);font-size:11px;font-weight:700;cursor:pointer;padding:7px 5px;transition:.2s;}
+#bnav{display:flex;background:#fff;border-top:1px solid #e9edef;box-shadow:0 -1px 4px rgba(0,0,0,.06);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#8696a0;font-family:var(--F);font-size:11px;font-weight:700;cursor:pointer;padding:7px 5px;transition:.2s;}
 .nb.active{color:var(--ac);}
 .nb .ni{font-size:20px;}
 
@@ -532,10 +532,19 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   </div>
 </div>
 
+<!-- NOTIFICATION BANNER -->
+<div id="notif-banner" style="display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1f2c34;border-radius:14px;padding:12px 16px;z-index:9998;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:92%;cursor:pointer;">
+  <div style="width:36px;height:36px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💬</div>
+  <div style="flex:1;min-width:0;">
+    <div id="notif-title" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:2px;"></div>
+    <div id="notif-body" style="font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+  </div>
+  <button onclick="document.getElementById('notif-banner').style.display='none';event.stopPropagation();" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;flex-shrink:0;">✕</button>
+</div>
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="2.0.0";
+const APP_VERSION="2.1.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){if(window.caches)caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)));localStorage.setItem("bv",APP_VERSION);location.reload(true);}
@@ -817,8 +826,14 @@ function sendMsg(){
   const c=contacts.find(x=>x.id===activeId);if(!c)return;
   inp.value="";inp.style.height="auto";
   const msg={sender:myEmail,type:"text",text,time:getTime(),ts:Date.now(),read:false};
-  if(window._firebaseReady){const chatId=getChatId(c.email||c.name);window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);}
-  else{c.msgs.push({id:"l"+Date.now(),from:"me",...msg});renderMsgs(c);}
+  if(window._firebaseReady){
+    const chatId=getChatId(c.email||c.name);
+    window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+    // Notifier le destinataire qu'il a un message de nous (pour auto-receive)
+    const theirId=c.email?c.email.replace(/[^a-zA-Z0-9]/g,"_"):c.id;
+    const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+    window._set(window._ref(window._db,"incoming/"+theirId+"/"+myId),myEmail);
+  }else{c.msgs.push({id:"l"+Date.now(),from:"me",...msg});renderMsgs(c);}
   updateSendBtn();
 }
 
@@ -987,13 +1002,24 @@ function subscribeToChat(c){
   if(!window._firebaseReady||c._subscribed)return;
   c._subscribed=true;
   const chatId=getChatId(c.email||c.name);
+  let firstLoad=true;
   window._onValue(window._ref(window._db,"chats/"+chatId+"/msgs"),snap=>{
-    const msgs=[];
+    const msgs=[],prevLen=c.msgs?c.msgs.length:0;
     snap.forEach(child=>{
       const v=child.val();
       msgs.push({id:child.key,from:v.sender===myEmail?"me":"them",text:v.text||"",type:v.type||"text",url:v.url||"",data:v.data||"",mimeType:v.mimeType||"",duration:v.duration||0,ts:v.ts||0,time:v.time||"",read:v.read||false,del_all:v.del_all||false,del_me:false});
     });
-    c.msgs=msgs;c.unread=c.id===activeId?0:(c.unread||0)+0;
+    c.msgs=msgs;
+    // Notification pour nouveaux messages reçus (pas au premier chargement)
+    if(!firstLoad&&msgs.length>prevLen){
+      const last=msgs[msgs.length-1];
+      if(last&&last.from==="them"&&activeId!==c.id){
+        c.unread=(c.unread||0)+1;
+        const msgTxt=last.type==="audio"?"🎤 Message vocal":last.type==="image"?"📷 Photo":last.type==="video"?"🎬 Vidéo":(last.text||"");
+        showNotif(dispName(c),msgTxt,()=>{openChat(c.id);if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");});
+      }
+    }
+    firstLoad=false;
     clearTimeout(_rct);_rct=setTimeout(()=>{renderChats(document.getElementById("srch-inp").value);if(activeId===c.id){renderMsgs(c);markChatAsRead(c);}saveCache();},120);
   });
 }
@@ -1081,18 +1107,21 @@ async function startCall(video){
   document.getElementById("call-acts-ongoing").style.display="flex";
 }
 function showIncBanner(c,d){
+  startRingtone();
   const b=document.getElementById("inc-banner");
   document.getElementById("inc-icon").textContent=d.video?"📹":"📞";
   document.getElementById("inc-label").textContent=d.video?"Appel vidéo":"Appel vocal";
   document.getElementById("inc-from").textContent=dispName(c);
-  b.classList.add("show");setTimeout(()=>b.classList.remove("show"),20000);
+  b.classList.add("show");
+  showNotif(dispName(c),(d.video?"📹 Appel vidéo":"📞 Appel vocal"),()=>showIncomingCallUI());
+  setTimeout(()=>{b.classList.remove("show");stopRingtone();},20000);
 }
 function showIncomingCallUI(){
   document.getElementById("inc-banner").classList.remove("show");
   if(!incomingCallData)return;
   const{c,d}=incomingCallData;showCallUI(dispName(c),d.video?"📹 Appel vidéo":"📞 Appel vocal","Appel entrant...",true);
 }
-async function acceptIncomingCall(){
+async function acceptIncomingCall(){stopRingtone();
   if(!incomingCallData)return;
   const{c,d,chatId}=incomingCallData;isCaller=false;callChatId=chatId;isVideoCall=d.video;
   document.getElementById("call-acts-incoming").style.display="none";document.getElementById("call-status").textContent="Connexion...";
@@ -1106,7 +1135,7 @@ async function acceptIncomingCall(){
   if(window._firebaseReady){window._set(window._ref(window._db,"calls/"+callChatId+"/answer"),JSON.stringify(answer));window._onValue(window._ref(window._db,"calls/"+callChatId+"/callerC"),snap=>{snap.forEach(ch=>{if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val()))).catch(()=>{});});});}
   document.getElementById("call-acts-ongoing").style.display="flex";document.getElementById("call-status").textContent="🔴 En appel";
 }
-function rejectCall(){document.getElementById("inc-banner").classList.remove("show");hideCallUI();incomingCallData=null;if(callChatId&&window._firebaseReady)window._update(window._ref(window._db,"calls/"+callChatId),{active:false});}
+function rejectCall(){stopRingtone();document.getElementById("inc-banner").classList.remove("show");hideCallUI();incomingCallData=null;if(callChatId&&window._firebaseReady)window._update(window._ref(window._db,"calls/"+callChatId),{active:false});}
 function endCall(){if(localStream)localStream.getTracks().forEach(t=>t.stop());if(peerConn)peerConn.close();localStream=null;peerConn=null;if(callChatId&&window._firebaseReady)window._set(window._ref(window._db,"calls/"+callChatId),{active:false});callChatId=null;incomingCallData=null;hideCallUI();}
 function showCallUI(name,title,status,incoming){document.getElementById("call-av").textContent=name?name[0].toUpperCase():"?";document.getElementById("call-name").textContent=name;document.getElementById("call-status").textContent=status;document.getElementById("call-acts-ongoing").style.display=incoming?"none":"flex";document.getElementById("call-acts-incoming").style.display=incoming?"flex":"none";document.getElementById("call-modal").classList.add("show");}
 function hideCallUI(){document.getElementById("call-modal").classList.remove("show");["rv","lv"].forEach(id=>{const v=document.getElementById(id);v.srcObject=null;v.style.display="none";});document.getElementById("call-acts-ongoing").style.display="none";document.getElementById("call-acts-incoming").style.display="none";}
@@ -1169,6 +1198,81 @@ function buildEmoji(){const p=document.getElementById("emoji-picker");EMOJIS.for
 function toggleEmoji(){emojiOpen=!emojiOpen;document.getElementById("emoji-picker").classList.toggle("show",emojiOpen);}
 document.addEventListener("click",e=>{if(!e.target.closest(".emj-btn")&&!e.target.closest("#emoji-picker")){emojiOpen=false;document.getElementById("emoji-picker").classList.remove("show");}});
 
+// ══ RINGTONE ══
+let ringtoneInterval=null;
+function startRingtone(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    function beep(freq,dur,delay){
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=freq;o.type="sine";
+      g.gain.setValueAtTime(0,ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+delay+0.05);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+delay+dur);
+      o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+dur+0.1);
+    }
+    function ring(){beep(880,0.15,0);beep(1100,0.15,0.2);beep(880,0.15,0.4);beep(1100,0.15,0.6);}
+    ring();ringtoneInterval=setInterval(ring,2000);
+  }catch(e){console.log("Ringtone error:",e);}
+}
+function stopRingtone(){clearInterval(ringtoneInterval);ringtoneInterval=null;}
+
+// ══ NOTIFICATION BANNER ══
+function showNotif(title,body,onClick){
+  // Demander permission notifications navigateur
+  if("Notification" in window&&Notification.permission==="default"){Notification.requestPermission();}
+  // Notification native si permise
+  if("Notification" in window&&Notification.permission==="granted"){
+    const n=new Notification("Bermax — "+title,{body,icon:"https://fashionnice615-source.github.io/Bermax-/icon.png",tag:"bermax-msg"});
+    n.onclick=()=>{window.focus();if(onClick)onClick();n.close();};
+    setTimeout(()=>n.close(),5000);
+  }
+  // Bannière in-app toujours visible
+  const b=document.getElementById("notif-banner");
+  document.getElementById("notif-title").textContent=title;
+  document.getElementById("notif-body").textContent=body;
+  b.style.display="flex";
+  b.onclick=()=>{b.style.display="none";if(onClick)onClick();};
+  setTimeout(()=>{b.style.display="none";},5000);
+}
+
+// ══ ANDROID BACK BUTTON ══
+window.addEventListener("popstate",()=>{
+  if(activeId){goBack();history.pushState(null,null,"#");}
+  else if(document.getElementById("media-preview").classList.contains("show")){closeMediaPreview();}
+  else if(document.getElementById("call-modal").classList.contains("show")){/* ne pas fermer l'appel */}
+});
+// Push un état pour capter le retour
+if(history.state===null)history.pushState(null,null,"#");
+
+// ══ AUTO-RECEIVE FROM UNKNOWN ══
+function listenForIncomingFromAll(){
+  // Écoute tous les chats qui contiennent mon email pour recevoir des messages d'inconnus
+  if(!window._firebaseReady||!myEmail)return;
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  // Firebase ne permet pas de requêtes complexes en Realtime DB
+  // On écoute tous les contacts existants + ceux qui envoient un message
+  // via un nœud "incoming/{myId}" où les expéditeurs écrivent
+  window._onValue(window._ref(window._db,"incoming/"+myId),snap=>{
+    snap.forEach(child=>{
+      const senderEmail=child.val();
+      if(!senderEmail||senderEmail===myEmail)return;
+      const senderId=senderEmail.replace(/[^a-zA-Z0-9]/g,"_");
+      // Ajouter comme contact inconnu si pas déjà présent
+      if(!contacts.find(x=>x.id===senderId)){
+        const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+        const ini=senderEmail.substring(0,2).toUpperCase();
+        const nc={id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic:"",status:"Hors ligne",msgs:[],unread:0};
+        contacts.unshift(nc);myContacts.push({id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic:"",online:false});
+        subscribeToChat(nc);subscribeToPresence(nc);subscribeToReadStatus(nc);subscribeToCalls(nc);
+        renderChats();renderContacts();
+        showNotif(senderEmail,"Nouveau message de "+senderEmail,()=>openChat(senderId));
+      }
+    });
+  });
+}
+
 // ══ MISC ══
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2800);}
 function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
@@ -1182,10 +1286,14 @@ if(savedEmail){
   myEmail=savedEmail;myColor=localStorage.getItem("bc")||"#25d366";picData=localStorage.getItem("bp")||null;
   applyAvatar();document.getElementById("login").classList.add("hidden");
   loadCache();
-  const go=()=>{loadContactsFB();startPresence();};
+  const go=()=>{loadContactsFB();startPresence();listenForIncomingFromAll();};
   window.addEventListener("firebaseReady",go);
   if(window._firebaseReady)go();
 }else{document.getElementById("login").classList.remove("hidden");}
+// Demander permission notifications
+if("Notification" in window&&Notification.permission==="default"){
+  document.addEventListener("click",()=>Notification.requestPermission(),{once:true});
+}
 // Init lang
 const l=LANGS.find(x=>x.c===lang);if(l)document.getElementById("lang-btn").textContent=l.f;
 </script>
