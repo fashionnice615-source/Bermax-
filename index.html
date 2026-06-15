@@ -277,7 +277,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
   #sidebar{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;}
   #sidebar.hidden{transform:translateX(-100%);}
   #main{width:100%;}
-  #back-btn{display:block;}
+  #back-btn{display:block!important;}
 }
 </style>
 </head>
@@ -316,15 +316,18 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
     <p>Sélectionnez une conversation pour commencer</p>
   </div>
   <div id="chat-view" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
-    <div class="c-hd">
-      <button id="back-btn" onclick="goBack()">‹</button>
-      <div class="av" id="hav"></div>
-      <div class="c-hd-info"><h2 id="hname"></h2><span id="hstatus">En ligne</span></div>
-      <div class="hact">
-        <button class="call-btn" onclick="startCall(false)">📞</button>
-        <button class="vid-btn" onclick="startCall(true)">📹</button>
-        <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔔</button>
-        <button class="ic" onclick="showChatMenu()">⋮</button>
+    <div class="c-hd" style="flex-direction:column;padding:0;gap:0;">
+      <!-- Ligne 1: boutons actions -->
+      <div style="width:100%;background:#075e54;display:flex;align-items:center;padding:6px 10px;gap:8px;">
+        <button id="back-btn" onclick="goBack()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px 8px 4px 0;display:none;">‹</button>
+        <div style="flex:1;display:flex;align-items:center;gap:10px;">
+          <div class="av" id="hav" style="width:36px;height:36px;font-size:13px;flex-shrink:0;"></div>
+          <div><h2 id="hname" style="font-size:14px;font-weight:700;color:#fff;margin:0;"></h2><span id="hstatus" style="font-size:11px;color:rgba(255,255,255,.8);">En ligne</span></div>
+        </div>
+        <button class="call-btn" onclick="startCall(false)" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:5px;">📞</button>
+        <button class="vid-btn" onclick="startCall(true)" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:5px;">📹</button>
+        <button id="mute-btn" onclick="toggleMute()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:5px;">🔔</button>
+        <button onclick="showChatMenu()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:5px;">⋮</button>
       </div>
     </div>
     <div id="messages"></div>
@@ -574,7 +577,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="2.2.0";
+const APP_VERSION="2.3.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){if(window.caches)caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)));localStorage.setItem("bv",APP_VERSION);location.reload(true);}
@@ -860,12 +863,19 @@ function sendMsg(){
   if(window._firebaseReady){
     const chatId=getChatId(c.email||c.name);
     window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
-    // Notifier le destinataire qu'il a un message de nous (pour auto-receive)
-    const theirId=c.email?c.email.replace(/[^a-zA-Z0-9]/g,"_"):c.id;
-    const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
-    window._set(window._ref(window._db,"incoming/"+theirId+"/"+myId),myEmail);
+    notifyIncoming(c);
   }else{c.msgs.push({id:"l"+Date.now(),from:"me",...msg});renderMsgs(c);}
   updateSendBtn();
+}
+
+// Notifier le destinataire qu'on lui a envoyé un message
+function notifyIncoming(c){
+  if(!window._firebaseReady||!myEmail)return;
+  const theirId=(c.email||c.name||c.id).replace(/[^a-zA-Z0-9]/g,"_");
+  const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
+  window._set(window._ref(window._db,"incoming/"+theirId+"/"+myId),{
+    email:myEmail,name:myEmail,color:myColor,pic:picData||"",ts:Date.now()
+  });
 }
 
 // ══ SMART SEND ══
@@ -948,6 +958,7 @@ async function confirmSendMedia(){
     if(window._firebaseReady){
       const chatId=getChatId(contact.email||contact.name);
       await window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);
+      notifyIncoming(contact);
       showToast(isImg?"📷 Photo envoyée !":"🎬 Vidéo envoyée !");
     }else{contact.msgs.push({id:"l"+Date.now()+"_"+i,from:"me",...msg});renderMsgs(contact);}
   }
@@ -1014,7 +1025,7 @@ function sendRec(){
     reader.onloadend=()=>{
       const b64=reader.result;
       const msg={sender:myEmail,type:"audio",data:b64,url:"",duration:dur,text:"🎤 "+dur+"s",time:getTime(),ts:Date.now(),read:false};
-      if(window._firebaseReady){const chatId=getChatId(c.email||c.name);window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);showToast("🎤 Vocal envoyé !");}
+      if(window._firebaseReady){const chatId=getChatId(c.email||c.name);window._push(window._ref(window._db,"chats/"+chatId+"/msgs"),msg);notifyIncoming(c);showToast("🎤 Vocal envoyé !");}
       else{c.msgs.push({id:"l"+Date.now(),from:"me",...msg});renderMsgs(c);}
     };
     reader.readAsDataURL(blob);
@@ -1364,27 +1375,29 @@ if(history.state===null)history.pushState(null,null,"#");
 
 // ══ AUTO-RECEIVE FROM UNKNOWN ══
 function listenForIncomingFromAll(){
-  // Écoute tous les chats qui contiennent mon email pour recevoir des messages d'inconnus
   if(!window._firebaseReady||!myEmail)return;
   const myId=myEmail.replace(/[^a-zA-Z0-9]/g,"_");
-  // Firebase ne permet pas de requêtes complexes en Realtime DB
-  // On écoute tous les contacts existants + ceux qui envoient un message
-  // via un nœud "incoming/{myId}" où les expéditeurs écrivent
   window._onValue(window._ref(window._db,"incoming/"+myId),snap=>{
     snap.forEach(child=>{
-      const senderEmail=child.val();
+      const data=child.val();
+      if(!data)return;
+      // Supporter l'ancien format (string) et nouveau format (object)
+      const senderEmail=typeof data==="string"?data:(data.email||"");
       if(!senderEmail||senderEmail===myEmail)return;
       const senderId=senderEmail.replace(/[^a-zA-Z0-9]/g,"_");
-      // Ajouter comme contact inconnu si pas déjà présent
-      if(!contacts.find(x=>x.id===senderId)){
-        const color=COLORS[Math.floor(Math.random()*COLORS.length)];
-        const ini=senderEmail.substring(0,2).toUpperCase();
-        const nc={id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic:"",status:"Hors ligne",msgs:[],unread:0};
-        contacts.unshift(nc);myContacts.push({id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic:"",online:false});
-        subscribeToChat(nc);subscribeToPresence(nc);subscribeToReadStatus(nc);subscribeToCalls(nc);
-        renderChats();renderContacts();
-        showNotif(senderEmail,"Nouveau message de "+senderEmail,()=>openChat(senderId));
-      }
+      if(contacts.find(x=>x.id===senderId))return; // déjà connu
+      // Nouveau contact inconnu qui nous a envoyé un message
+      const color=(typeof data==="object"&&data.color)?data.color:COLORS[Math.floor(Math.random()*COLORS.length)];
+      const pic=(typeof data==="object"&&data.pic)?data.pic:"";
+      const ini=senderEmail.substring(0,2).toUpperCase();
+      const nc={id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic,status:"Hors ligne",msgs:[],unread:1};
+      contacts.unshift(nc);
+      myContacts.push({id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic,online:false});
+      subscribeToChat(nc);subscribeToPresence(nc);subscribeToReadStatus(nc);subscribeToCalls(nc);
+      // Sauvegarder dans les contacts Firebase
+      window._set(window._ref(window._db,"users/"+myId+"/contacts/"+senderId),{id:senderId,name:senderEmail,email:senderEmail,customName:"",ini,color,pic});
+      renderChats();renderContacts();
+      showNotif(senderEmail,"Nouveau message reçu",()=>{openChat(senderId);if(window.innerWidth<=640)document.getElementById("sidebar").classList.add("hidden");});
     });
   });
 }
