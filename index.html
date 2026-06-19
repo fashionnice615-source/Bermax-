@@ -312,6 +312,118 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
     <div class="srch"><input type="text" id="csrch" placeholder="Rechercher un contact..." oninput="filterContacts(this.value)"/></div>
     <div id="contacts-list"></div>
   </div>
+  <!-- CALLS PANEL -->
+  <div id="calls-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div style="padding:12px 16px;background:#25d366;">
+      <span style="font-size:16px;font-weight:800;color:#fff;">📞 Appels</span>
+    </div>
+    <div id="call-log-list" style="flex:1;overflow-y:auto;background:#fff;"></div>
+  </div>
+
+  <!-- STATUS PANEL -->
+  <div id="status-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div style="padding:12px 16px;background:#25d366;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:16px;font-weight:800;color:#fff;">⭕ Statuts</span>
+      <button onclick="openAddStatus()" style="background:rgba(255,255,255,.2);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:6px 14px;">+ Ajouter</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;background:#fff;">
+      <div style="padding:14px 16px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="openAddStatus()">
+        <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;position:relative;flex-shrink:0;">M
+          <div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>
+        </div>
+        <div><div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div><div id="my-status-text" style="font-size:12px;color:#667781;">Appuie pour ajouter un statut</div></div>
+      </div>
+      <div style="padding:8px 16px 4px;font-size:12px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;background:#f0f2f5;">Récentes</div>
+      <div id="contacts-status-list"></div>
+    </div>
+  </div>
+
+  <!-- STATUS MODAL -->
+  <div id="status-modal" onclick="if(event.target===this)closeStatusModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:6000;align-items:flex-end;justify-content:center;">
+    <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 30px;animation:sup .25s ease;">
+      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 14px;"></div>
+      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:14px;">✏️ Mon statut</div>
+      <textarea id="status-inp" placeholder="Ex: Disponible, En reunion, A plus tard..." maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:100px;color:#111b21;box-sizing:border-box;"></textarea>
+      <div style="font-size:11px;color:#8696a0;text-align:right;margin:4px 0 12px;">Max 139 caractères</div>
+      <button onclick="saveStatus()" style="width:100%;padding:14px;background:#25d366;border:none;border-radius:13px;color:#000;font-family:var(--F);font-size:15px;font-weight:800;cursor:pointer;">✅ Publier</button>
+      <button onclick="closeStatusModal()" style="width:100%;padding:12px;background:#f0f2f5;border:none;border-radius:13px;color:#667781;font-family:var(--F);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">Annuler</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div id="settings-panel" style="display:none;flex-direction:column;flex:1;overflow-y:auto;background:#f0f2f5;">
+    <div style="padding:12px 16px;background:#25d366;">
+      <span style="font-size:16px;font-weight:800;color:#fff;">⚙️ Paramètres</span>
+    </div>
+    <!-- Profile card -->
+    <div style="background:#fff;margin-bottom:8px;padding:20px 16px;display:flex;align-items:center;gap:14px;">
+      <div id="sp-avatar" onclick="document.getElementById('sp-pic-inp').click()" style="width:64px;height:64px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;cursor:pointer;">M</div>
+      <input type="file" id="sp-pic-inp" accept="image/*" style="display:none" onchange="changeMyPic(this);renderSettings()"/>
+      <div style="flex:1;">
+        <div id="sp-email" style="font-size:15px;font-weight:700;color:#111b21;word-break:break-all;"></div>
+        <div id="sp-status-line" style="font-size:13px;color:#667781;margin-top:2px;cursor:pointer;" onclick="openAddStatus()">✏️ Mon statut</div>
+      </div>
+    </div>
+    <!-- Connexions actives -->
+    <div style="background:#fff;margin-bottom:8px;">
+      <div style="padding:10px 16px;font-size:12px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #f0f2f5;">Informations du compte</div>
+      <div class="sp-item">
+        <span style="font-size:20px;">📧</span>
+        <div class="sp-item-info"><div>E-mail</div><div id="sp-email2" style="font-size:12px;color:#25d366;word-break:break-all;"></div></div>
+      </div>
+      <div class="sp-item">
+        <span style="font-size:20px;">👥</span>
+        <div class="sp-item-info"><div>Contacts</div><div id="sp-contacts-count" style="font-size:12px;color:#667781;"></div></div>
+      </div>
+      <div class="sp-item">
+        <span style="font-size:20px;">💬</span>
+        <div class="sp-item-info"><div>Discussions</div><div id="sp-chats-count" style="font-size:12px;color:#667781;"></div></div>
+      </div>
+      <div class="sp-item">
+        <span style="font-size:20px;">📞</span>
+        <div class="sp-item-info"><div>Appels passés</div><div id="sp-calls-count" style="font-size:12px;color:#667781;"></div></div>
+      </div>
+    </div>
+    <!-- Options -->
+    <div style="background:#fff;margin-bottom:8px;">
+      <div style="padding:10px 16px;font-size:12px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #f0f2f5;">Préférences</div>
+      <div class="sp-item" onclick="openRenameProfile()">
+        <span style="font-size:20px;">👤</span>
+        <div class="sp-item-info"><div>Nom affiché</div><div id="sp-name-preview" style="font-size:12px;color:#667781;"></div></div>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
+      <div class="sp-item" onclick="showLang()">
+        <span style="font-size:20px;">🌍</span>
+        <div class="sp-item-info"><div>Langue</div><div id="sp-lang" style="font-size:12px;color:#667781;"></div></div>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
+      <div class="sp-item" onclick="toggleTheme()">
+        <span style="font-size:20px;" id="sp-theme-icon">🌙</span>
+        <div class="sp-item-info"><div>Thème</div><div id="sp-theme-name" style="font-size:12px;color:#667781;">Clair</div></div>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
+    </div>
+    <div style="background:#fff;margin-bottom:8px;">
+      <div class="sp-item" onclick="exportData()">
+        <span style="font-size:20px;">💾</span>
+        <div class="sp-item-info"><div>Exporter mes données</div><div style="font-size:12px;color:#667781;">Télécharger l'historique</div></div>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
+      <div class="sp-item" onclick="openAbout()">
+        <span style="font-size:20px;">ℹ️</span>
+        <div class="sp-item-info"><div>À propos de Bermax</div><div style="font-size:12px;color:#667781;">Version 3.2.0</div></div>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
+    </div>
+    <div style="background:#fff;margin-bottom:24px;">
+      <div class="sp-item" onclick="logout()" style="color:#ef4444;">
+        <span style="font-size:20px;">🚪</span>
+        <div class="sp-item-info" style="color:#ef4444;"><div style="color:#ef4444;">Se déconnecter</div><div style="font-size:12px;color:#ef4444;">Déconnecte ce compte</div></div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#8696a0;padding:8px 16px 24px;">Bermax v3.2.0 • Messagerie sécurisée</div>
+  </div>
+
   <div id="bnav">
     <button class="nb active" id="nb-chats" onclick="switchNav('chats')"><span class="ni">💬</span><span>Discussions</span></button>
     <button class="nb" id="nb-calls" onclick="switchNav('calls')"><span class="ni">📞</span><span>Appels</span></button>
@@ -590,7 +702,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.2.0";
+const APP_VERSION="3.3.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -962,9 +1074,12 @@ function saveStatus(){
 }
 
 function renderStatus(){
-  // My status
   const myLine=$("my-status-text");if(myLine)myLine.textContent=myStatus||"Appuie pour ajouter un statut";
-  const myAv=$("my-status-av");if(myAv&&picData){myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#25d366;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;">➕</div>`;}
+  const myAv=$("my-status-av");
+  if(myAv){
+    if(picData)myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>`;
+    else{myAv.style.background=myColor;myAv.innerHTML=myEmail.slice(0,2).toUpperCase()+'<div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>';}
+  }
   // Contacts statuses
   const list=$("contacts-status-list");if(!list)return;
   list.innerHTML="";
@@ -1008,17 +1123,28 @@ function timeSince(ts){
 let myDisplayName="";
 
 function renderSettings(){
+  // Email displays
   const em=$("sp-email");if(em)em.textContent=myEmail;
-  const sl=$("sp-status-line");if(sl)sl.innerHTML=(myStatus?"<b>"+esc(myStatus)+"</b>":"✏️ Modifier le statut");
+  const em2=$("sp-email2");if(em2)em2.textContent=myEmail;
+  // Status
+  const sl=$("sp-status-line");
+  if(sl)sl.innerHTML=myStatus?'<b style="color:#111b21;">'+esc(myStatus)+'</b>':'<span style="color:#8696a0;">Appuie pour ajouter un statut</span>';
+  // Avatar
   const av=$("sp-avatar");
   if(av){
     if(picData)av.innerHTML=`<img src="${picData}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;"/>`;
     else{av.style.background=myColor;av.textContent=myEmail.slice(0,2).toUpperCase();}
   }
+  const av2=$("sp-avatar");if(av2)av2.style.background=picData?"transparent":myColor;
+  // Stats
+  const cc=$("sp-contacts-count");if(cc)cc.textContent=myContacts.length+" contact(s)";
+  const chc=$("sp-chats-count");if(chc)chc.textContent=contacts.length+" discussion(s)";
+  const clc=$("sp-calls-count");if(clc)clc.textContent=(callLog.length||0)+" appel(s)";
+  // Lang
   const ln=$("sp-lang");
   if(ln){const l=LANGS.find(x=>x.c===lang);ln.textContent=l?l.f+" "+l.n:lang;}
-  const np=$("sp-name-preview");
-  if(np)np.textContent=myDisplayName||myEmail;
+  // Name
+  const np=$("sp-name-preview");if(np)np.textContent=myDisplayName||myEmail;
 }
 
 function openRenameProfile(){
