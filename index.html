@@ -273,6 +273,16 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @keyframes bld{0%,100%{opacity:1;}50%{opacity:.2;}}
+.sp-item{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;border-bottom:1px solid #f0f2f5;}
+.sp-item:hover{background:#f9f9f9;}
+.sp-item-info{flex:1;font-size:14px;font-weight:600;color:#111b21;}
+.call-log-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f2f5;cursor:pointer;}
+.call-log-item:hover{background:#f9f9f9;}
+.cli-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;color:#fff;}
+.cli-info{flex:1;min-width:0;}
+.cli-name{font-size:14px;font-weight:700;color:#111b21;}
+.cli-detail{font-size:12px;color:#667781;display:flex;align-items:center;gap:4px;}
+.cli-time{font-size:11px;color:#8696a0;text-align:right;}
 @media(max-width:640px){
   #sidebar{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;}
   #sidebar.hidden{transform:translateX(-100%);}
@@ -303,8 +313,11 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
     <div id="contacts-list"></div>
   </div>
   <div id="bnav">
-    <button class="nb active" id="nb-chats" onclick="switchNav('chats')"><span class="ni">💬</span><span id="lbl-chats">Discussions</span></button>
-    <button class="nb" id="nb-contacts" onclick="switchNav('contacts')"><span class="ni">👥</span><span id="lbl-contacts">Contacts</span></button>
+    <button class="nb active" id="nb-chats" onclick="switchNav('chats')"><span class="ni">💬</span><span>Discussions</span></button>
+    <button class="nb" id="nb-calls" onclick="switchNav('calls')"><span class="ni">📞</span><span>Appels</span></button>
+    <button class="nb" id="nb-status" onclick="switchNav('status')"><span class="ni">⭕</span><span>Statuts</span></button>
+    <button class="nb" id="nb-contacts" onclick="switchNav('contacts')"><span class="ni">👥</span><span>Contacts</span></button>
+    <button class="nb" id="nb-settings" onclick="switchNav('settings')"><span class="ni">⚙️</span><span>Paramètres</span></button>
   </div>
 </div>
 
@@ -577,7 +590,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.1.0";
+const APP_VERSION="3.2.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -874,10 +887,193 @@ function startPresence(){
 
 // ══ NAV ══
 function switchNav(tab){
-  $("nb-chats").classList.toggle("active",tab==="chats");
-  $("nb-contacts").classList.toggle("active",tab==="contacts");
+  // Update nav buttons
+  ["chats","calls","status","contacts","settings"].forEach(t=>{
+    const btn=$("nb-"+t);if(btn)btn.classList.toggle("active",t===tab);
+  });
+  // Show/hide panels
   $("chats-panel").style.display=tab==="chats"?"flex":"none";
-  $("contacts-panel").classList.toggle("show",tab==="contacts");
+  const cp=$("contacts-panel");if(cp){cp.style.display="none";cp.classList.toggle("show",false);}
+  if(tab==="contacts"&&cp){cp.style.display="flex";cp.classList.add("show");}
+
+  const callsP=$("calls-panel");if(callsP)callsP.style.display=tab==="calls"?"flex":"none";
+  const statusP=$("status-panel");if(statusP)statusP.style.display=tab==="status"?"flex":"none";
+  const settP=$("settings-panel");if(settP)settP.style.display=tab==="settings"?"flex":"none";
+
+  if(tab==="calls")renderCallLog();
+  if(tab==="status")renderStatus();
+  if(tab==="settings")renderSettings();
+}
+
+// ══ CALL LOG ══
+function renderCallLog(){
+  const list=$("call-log-list");if(!list)return;
+  list.innerHTML="";
+  if(!callLog.length){
+    list.innerHTML='<div style="text-align:center;color:#667781;padding:40px 20px;font-size:14px;">Aucun appel récent</div>';
+    return;
+  }
+  callLog.forEach(entry=>{
+    const c=contacts.find(x=>x.id===entry.contactId)||{name:entry.contactName,email:entry.contactName,color:"#8696a0",ini:(entry.contactName||"?").substring(0,2).toUpperCase(),pic:""};
+    const div=document.createElement("div");div.className="call-log-item";
+    div.onclick=()=>{switchNav("chats");openChat(entry.contactId||c.id);};
+    const typeIcon=entry.video?"📹":"📞";
+    const statusIcon=!entry.answered?"🔴":entry.outgoing?"📤":"📥";
+    const statusText=!entry.answered?(entry.outgoing?"Manqué":"Manqué"):(entry.outgoing?"Émis":"Reçu");
+    const statusColor=!entry.answered?"#ef4444":entry.outgoing?"#25d366":"#0078d4";
+    const avHtml=c.pic?`<img src="${c.pic}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;"/>`:c.ini||"?";
+    div.innerHTML=`<div class="cli-icon" style="background:${c.color}">${avHtml}</div>
+      <div class="cli-info">
+        <div class="cli-name">${esc(dispName(c))}</div>
+        <div class="cli-detail" style="color:${statusColor}">${statusIcon} ${typeIcon} ${statusText}</div>
+      </div>
+      <div class="cli-time">${entry.time||""}<br/>
+        <button onclick="event.stopPropagation();startCall(${entry.video})" style="background:none;border:none;font-size:18px;cursor:pointer;color:#25d366;">${entry.video?"📹":"📞"}</button>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+// ══ STATUS ══
+let myStatus="";
+let contactsStatuses=[];
+
+function openAddStatus(){
+  const modal=$("status-modal");if(!modal)return;
+  const inp=$("status-inp");if(inp)inp.value=myStatus||"";
+  modal.style.display="flex";
+  setTimeout(()=>{if(inp)inp.focus();},300);
+}
+function closeStatusModal(){const m=$("status-modal");if(m)m.style.display="none";}
+
+function saveStatus(){
+  const inp=$("status-inp");if(!inp)return;
+  const text=inp.value.trim();
+  myStatus=text;
+  localStorage.setItem("bstatus_"+myId(),text);
+  // Save to Firebase for others to see
+  if(window._firebaseReady&&myEmail){
+    window._set(getFB("statuses/"+myId()),{
+      email:myEmail,text,ts:Date.now(),color:myColor,pic:picData||""
+    });
+  }
+  closeStatusModal();renderStatus();
+  showToast(text?"✅ Statut publié !":"✅ Statut effacé");
+}
+
+function renderStatus(){
+  // My status
+  const myLine=$("my-status-text");if(myLine)myLine.textContent=myStatus||"Appuie pour ajouter un statut";
+  const myAv=$("my-status-av");if(myAv&&picData){myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#25d366;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;">➕</div>`;}
+  // Contacts statuses
+  const list=$("contacts-status-list");if(!list)return;
+  list.innerHTML="";
+  if(!contactsStatuses.length){
+    list.innerHTML='<div style="padding:20px 16px;font-size:13px;color:#8696a0;">Les statuts de vos contacts apparaitront ici.</div>';
+    return;
+  }
+  contactsStatuses.forEach(s=>{
+    const c=myContacts.find(x=>x.email===s.email)||{name:s.email,color:s.color||"#8696a0",ini:(s.email||"?").substring(0,2).toUpperCase(),pic:s.pic||""};
+    const div=document.createElement("div");div.className="call-log-item";
+    const ago=timeSince(s.ts);
+    const avHtml=c.pic?`<img src="${c.pic}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:3px solid #25d366;"/>`:
+      `<div style="width:44px;height:44px;border-radius:50%;background:${c.color||"#8696a0"};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;border:3px solid #25d366;">${c.ini||"?"}</div>`;
+    div.innerHTML=`${avHtml}<div class="cli-info"><div class="cli-name">${esc(dispName(c))}</div><div class="cli-detail">${esc(s.text||"")}</div></div><div class="cli-time">${ago}</div>`;
+    list.appendChild(div);
+  });
+}
+
+function loadContactsStatuses(){
+  if(!window._firebaseReady||!myEmail)return;
+  window._onValue(getFB("statuses"),snap=>{
+    const list=[];
+    snap.forEach(ch=>{
+      const d=ch.val();
+      if(d&&d.email&&d.email!==myEmail&&d.ts&&Date.now()-d.ts<86400000)list.push(d);
+    });
+    contactsStatuses=list.sort((a,b)=>b.ts-a.ts);
+    if($("status-panel")&&$("status-panel").style.display!=="none")renderStatus();
+  });
+}
+
+function timeSince(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return "À l'instant";
+  if(s<3600)return Math.floor(s/60)+"min";
+  if(s<86400)return Math.floor(s/3600)+"h";
+  return Math.floor(s/86400)+"j";
+}
+
+// ══ SETTINGS ══
+let myDisplayName="";
+
+function renderSettings(){
+  const em=$("sp-email");if(em)em.textContent=myEmail;
+  const sl=$("sp-status-line");if(sl)sl.innerHTML=(myStatus?"<b>"+esc(myStatus)+"</b>":"✏️ Modifier le statut");
+  const av=$("sp-avatar");
+  if(av){
+    if(picData)av.innerHTML=`<img src="${picData}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;"/>`;
+    else{av.style.background=myColor;av.textContent=myEmail.slice(0,2).toUpperCase();}
+  }
+  const ln=$("sp-lang");
+  if(ln){const l=LANGS.find(x=>x.c===lang);ln.textContent=l?l.f+" "+l.n:lang;}
+  const np=$("sp-name-preview");
+  if(np)np.textContent=myDisplayName||myEmail;
+}
+
+function openRenameProfile(){
+  const nm=prompt("Entrez votre nom affiché :",myDisplayName||"");
+  if(nm===null)return;
+  myDisplayName=nm.trim();
+  localStorage.setItem("bdn_"+myId(),myDisplayName);
+  if(window._firebaseReady)window._set(getFB("users/"+myId()+"/displayName"),myDisplayName);
+  renderSettings();showToast("✅ Nom mis à jour !");
+}
+
+let _darkMode=false;
+function toggleTheme(){
+  _darkMode=!_darkMode;
+  const icon=$("sp-theme-icon"),name=$("sp-theme-name");
+  if(_darkMode){
+    document.documentElement.style.setProperty("--bg","#0d1117");
+    document.documentElement.style.setProperty("--side","#111820");
+    document.documentElement.style.setProperty("--hd","#141f2b");
+    document.documentElement.style.setProperty("--tx","#e8edf2");
+    document.documentElement.style.setProperty("--mu","#7a8fa6");
+    document.documentElement.style.setProperty("--br","#1e2d3d");
+    document.documentElement.style.setProperty("--inp","#1c2a38");
+    document.documentElement.style.setProperty("--hov","#1a2535");
+    if(icon)icon.textContent="☀️";if(name)name.textContent="Sombre";
+  }else{
+    document.documentElement.style.setProperty("--bg","#f0f2f5");
+    document.documentElement.style.setProperty("--side","#ffffff");
+    document.documentElement.style.setProperty("--hd","#ffffff");
+    document.documentElement.style.setProperty("--tx","#111b21");
+    document.documentElement.style.setProperty("--mu","#667781");
+    document.documentElement.style.setProperty("--br","#e9edef");
+    document.documentElement.style.setProperty("--inp","#f0f2f5");
+    document.documentElement.style.setProperty("--hov","#f5f6f6");
+    if(icon)icon.textContent="🌙";if(name)name.textContent="Clair";
+  }
+  localStorage.setItem("bdark",_darkMode?"1":"0");
+}
+
+function exportData(){
+  const data={email:myEmail,contacts:myContacts,chats:contacts.map(c=>({name:dispName(c),email:c.email,msgs:(c.msgs||[]).length+" messages"})),callLog,status:myStatus,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="bermax_data.json";document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  showToast("💾 Données exportées !");
+}
+
+function openPrivacyInfo(){
+  const msg="Confidentialite Bermax\n\nVos messages sont stockes dans Firebase.\nVos medias sont stockes sur Cloudinary.\nAucune donnee n est vendue a des tiers.";
+  alert(msg);
+}
+function openAbout(){
+  const msg="Bermax v3.2.0\n\nApplication de messagerie.\nFonctionnalites:\n- Messages en temps reel\n- Appels audio/video\n- Statuts\n- Photos et videos\n- Messages vocaux";
+  alert(msg);
 }
 
 // ══ CONTACTS ══
@@ -1288,48 +1484,92 @@ function startRingtone(){
 function stopRingtone(){clearInterval(_ringInt);_ringInt=null;try{if(_ringCtx)_ringCtx.close();}catch(e){}_ringCtx=null;}
 
 // ══ CALLS WebRTC ══
-const ICE_SERVERS={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+const ICE_SERVERS={iceServers:[
+  {urls:"stun:stun.l.google.com:19302"},
+  {urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:stun2.l.google.com:19302"},
+  {urls:"stun:stun3.l.google.com:19302"},
+  {urls:"stun:stun4.l.google.com:19302"},
+  // Free TURN servers (OpenRelay)
+  {urls:"turn:openrelay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443?transport=tcp",username:"openrelayproject",credential:"openrelayproject"},
+  // Backup TURN
+  {urls:"turn:relay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:relay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
+]};
+
+let callLog=[]; // Historique des appels
 
 async function startCall(video){
   if(!activeId){showToast("⚠️ Ouvre une conversation d'abord");return;}
   const c=contacts.find(x=>x.id===activeId);if(!c)return;
   isVideoCall=video;isCaller=true;
   callChatId=getChatId(myEmail,c.email||c.name);
-  showCallUI(dispName(c),video?"📹 Appel vidéo":"📞 Appel vocal","Appel en cours...",false);
+  showCallUI(dispName(c),video?"📹 Appel vidéo":"📞 Appel vocal","📡 Connexion...",false);
   try{
     localStream=await navigator.mediaDevices.getUserMedia({audio:true,video});
     if(video){const lv=$("lv");lv.srcObject=localStream;lv.style.display="block";}
-  }catch(e){showToast("❌ "+e.name);hideCallUI();return;}
+  }catch(e){showToast("❌ Accès refusé : "+e.name);hideCallUI();return;}
+
   peerConn=new RTCPeerConnection(ICE_SERVERS);
+
+  // Monitor connection state
+  peerConn.onconnectionstatechange=()=>{
+    const s=peerConn.connectionState;
+    console.log("Call state:",s);
+    if(s==="connected"){$("call-status").textContent="🔴 En appel";}
+    else if(s==="disconnected"||s==="failed"){
+      showToast("📵 Connexion perdue");
+      logCall(c,video,false);endCall();
+    }
+  };
+  peerConn.oniceconnectionstatechange=()=>{
+    const s=peerConn.iceConnectionState;
+    if(s==="checking")$("call-status").textContent="🔄 Connexion...";
+    if(s==="connected"||s==="completed")$("call-status").textContent="🔴 En appel";
+    if(s==="failed"){
+      showToast("❌ Impossible de se connecter");
+      logCall(c,video,false);endCall();
+    }
+  };
+
   localStream.getTracks().forEach(t=>peerConn.addTrack(t,localStream));
   peerConn.ontrack=e=>{const rv=$("rv");rv.srcObject=e.streams[0];rv.style.display="block";};
   peerConn.onicecandidate=e=>{
     if(e.candidate&&window._firebaseReady)
       window._push(getFB("calls/"+callChatId+"/callerC"),JSON.stringify(e.candidate.toJSON()));
   };
+
   const offer=await peerConn.createOffer();
   await peerConn.setLocalDescription(offer);
+
   if(window._firebaseReady){
-    // Écrire l'offre dans Firebase
-    window._set(getFB("calls/"+callChatId),{from:myEmail,offer:JSON.stringify(offer),video,ts:Date.now(),active:true});
-    // Écouter la réponse
+    window._set(getFB("calls/"+callChatId),{
+      from:myEmail,fromName:dispName({email:myEmail}),
+      offer:JSON.stringify(offer),video,ts:Date.now(),active:true
+    });
     window._onValue(getFB("calls/"+callChatId+"/answer"),async snap=>{
       const a=snap.val();
       if(a&&peerConn&&peerConn.signalingState==="have-local-offer"){
         await peerConn.setRemoteDescription(JSON.parse(a));
-        $("call-status").textContent="🔴 En appel";
-        $("call-acts-ongoing").style.display="flex";
+        logCall(c,video,true);
       }
     });
-    // Écouter ICE candidates
     window._onValue(getFB("calls/"+callChatId+"/calleeC"),snap=>{
-      snap.forEach(ch=>{
-        try{if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){}
-      });
+      snap.forEach(ch=>{try{if(peerConn&&peerConn.remoteDescription)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){console.warn("ICE err:",e);}});
     });
   }
   $("call-acts-ongoing").style.display="flex";
 }
+
+function logCall(c,video,answered){
+  const entry={id:Date.now(),contactId:c.id,contactName:dispName(c),video,answered,outgoing:isCaller,ts:Date.now(),time:getTime()};
+  callLog.unshift(entry);if(callLog.length>50)callLog=callLog.slice(0,50);
+  saveCallLog();renderCallLog();
+}
+function saveCallLog(){try{localStorage.setItem("bcl_"+myId(),JSON.stringify(callLog));}catch(e){}}
+function loadCallLog(){try{const s=localStorage.getItem("bcl_"+myId());if(s)callLog=JSON.parse(s);}catch(e){}}
 
 function showIncBanner(c,d){
   startRingtone();
@@ -1374,9 +1614,12 @@ async function acceptIncomingCall(){
     });
   }
   $("call-acts-ongoing").style.display="flex";$("call-status").textContent="🔴 En appel";
+  logCall(incomingCallData.c,isVideoCall,true);
 }
 function rejectCall(){
-  stopRingtone();$("inc-banner").classList.remove("show");hideCallUI();incomingCallData=null;
+  stopRingtone();
+  if(incomingCallData)logCall(incomingCallData.c,incomingCallData.d&&incomingCallData.d.video,false);
+  $("inc-banner").classList.remove("show");hideCallUI();incomingCallData=null;
   if(callChatId&&window._firebaseReady)window._update(getFB("calls/"+callChatId),{active:false});
 }
 function endCall(){
@@ -1451,9 +1694,11 @@ function loginOk(){
   myEmail=$("email-inp").value.trim();
   showToast("✅ Connecté !");applyAvatar();
   localStorage.setItem("be",myEmail);localStorage.setItem("bc",myColor);if(picData)localStorage.setItem("bp",picData);
+  myStatus=localStorage.getItem("bstatus_"+myId())||"";
+  myDisplayName=localStorage.getItem("bdn_"+myId())||"";
   if(window._firebaseReady){
     window._set(getFB("users/"+myId()+"/profile"),{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
-    loadContactsFB();startPresence();listenIncoming();
+    loadContactsFB();startPresence();listenIncoming();loadContactsStatuses();
   }
   setTimeout(()=>$("login").classList.add("hidden"),400);
 }
@@ -1462,7 +1707,11 @@ function applyAvatar(){
   if(picData){av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;av.style.background="transparent";}
   else{av.textContent=myEmail.slice(0,2).toUpperCase();av.style.background=myColor;}
 }
-function showSettings(){$("settings-email").textContent=myEmail;$("settings-modal").classList.add("show");}
+function showSettings(){
+  // If in chat, show chat menu. If in sidebar, go to settings tab
+  if(activeId){showChatMenu();}
+  else{switchNav("settings");}
+}
 function closeSettings(){$("settings-modal").classList.remove("show");}
 function logout(){["be","bc","bp"].forEach(k=>localStorage.removeItem(k));location.reload();}
 
@@ -1497,16 +1746,23 @@ window.addEventListener("popstate",()=>{
 buildEmoji();
 const _savedEmail=localStorage.getItem("be");
 if(_savedEmail){
-  myEmail=_savedEmail;myColor=localStorage.getItem("bc")||"#25d366";picData=localStorage.getItem("bp")||null;
+  myEmail=_savedEmail;
+  myColor=localStorage.getItem("bc")||"#25d366";
+  picData=localStorage.getItem("bp")||null;
+  myStatus=localStorage.getItem("bstatus_"+_savedEmail.replace(/[^a-zA-Z0-9]/g,"_"))||"";
+  myDisplayName=localStorage.getItem("bdn_"+_savedEmail.replace(/[^a-zA-Z0-9]/g,"_"))||"";
+  // Dark mode
+  if(localStorage.getItem("bdark")==="1"){_darkMode=false;toggleTheme();}
   applyAvatar();$("login").classList.add("hidden");
   loadCache();
-  const onFB=()=>{loadContactsFB();startPresence();listenIncoming();};
+  loadCallLog();
+  const onFB=()=>{loadContactsFB();startPresence();listenIncoming();loadContactsStatuses();};
   if(window._firebaseReady){onFB();}
   else window.addEventListener("firebaseReady",onFB,{once:true});
 }else{
   $("login").classList.remove("hidden");
 }
-window.addEventListener("online",()=>{if(window._firebaseReady&&myEmail){loadContactsFB();startPresence();listenIncoming();}});
+window.addEventListener("online",()=>{if(window._firebaseReady&&myEmail){loadContactsFB();startPresence();listenIncoming();loadContactsStatuses();}});
 const _initLang=LANGS.find(x=>x.c===lang);if(_initLang&&$("lang-btn"))$("lang-btn").textContent=_initLang.f;
 
 </script>
