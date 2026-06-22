@@ -327,24 +327,62 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <button onclick="openAddStatus()" style="background:rgba(255,255,255,.2);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:6px 14px;">+ Ajouter</button>
     </div>
     <div style="flex:1;overflow-y:auto;background:#fff;">
-      <div style="padding:14px 16px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="openAddStatus()">
-        <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;position:relative;flex-shrink:0;">M
-          <div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>
+      <div style="border-bottom:1px solid #f0f2f5;">
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="myStatus?viewMyStatus():openAddStatus()">
+          <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;position:relative;flex-shrink:0;">M
+            <div style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#25d366;border:2px solid #fff;">➕</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div>
+            <div id="my-status-text" style="font-size:12px;color:#667781;margin-top:2px;">Appuie pour ajouter un statut</div>
+          </div>
+          <button onclick="event.stopPropagation();openAddStatus()" style="background:none;border:none;color:#25d366;font-size:22px;cursor:pointer;padding:4px;">✏️</button>
         </div>
-        <div><div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div><div id="my-status-text" style="font-size:12px;color:#667781;">Appuie pour ajouter un statut</div></div>
       </div>
       <div style="padding:8px 16px 4px;font-size:12px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;background:#f0f2f5;">Récentes</div>
       <div id="contacts-status-list"></div>
     </div>
   </div>
 
+  <!-- LOGOUT CONFIRM MODAL -->
+  <div id="logout-modal" onclick="if(event.target===this)closeLogoutModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:7000;align-items:center;justify-content:center;padding:20px;">
+    <div style="width:100%;max-width:340px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="padding:24px 20px 16px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">🚪</div>
+        <div style="font-size:17px;font-weight:800;color:#111b21;margin-bottom:8px;">Se déconnecter ?</div>
+        <div style="font-size:13px;color:#667781;line-height:1.5;">Vous serez déconnecté de votre compte Bermax sur cet appareil. Vos messages et contacts resteront sauvegardés.</div>
+      </div>
+      <div style="border-top:1px solid #f0f2f5;display:flex;">
+        <button onclick="closeLogoutModal()" style="flex:1;padding:16px;background:none;border:none;border-right:1px solid #f0f2f5;font-family:var(--F);font-size:15px;font-weight:700;color:#667781;cursor:pointer;">Annuler</button>
+        <button onclick="logout()" style="flex:1;padding:16px;background:none;border:none;font-family:var(--F);font-size:15px;font-weight:700;color:#ef4444;cursor:pointer;">Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+
   <!-- STATUS MODAL -->
   <div id="status-modal" onclick="if(event.target===this)closeStatusModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:6000;align-items:flex-end;justify-content:center;">
     <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 30px;animation:sup .25s ease;">
-      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 14px;"></div>
-      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:14px;">✏️ Mon statut</div>
-      <textarea id="status-inp" placeholder="Ex: Disponible, En reunion, A plus tard..." maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:100px;color:#111b21;box-sizing:border-box;"></textarea>
-      <div style="font-size:11px;color:#8696a0;text-align:right;margin:4px 0 12px;">Max 139 caractères</div>
+      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 10px;"></div>
+      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:14px;">Ajouter un statut</div>
+      <!-- Type selector -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button id="stype-text" onclick="setStatusType('text')" style="flex:1;padding:10px;border:2px solid #25d366;border-radius:12px;background:#f0fdf4;color:#15803d;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">✏️ Texte</button>
+        <button id="stype-photo" onclick="setStatusType('photo')" style="flex:1;padding:10px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">📷 Photo</button>
+      </div>
+      <!-- Text section -->
+      <div id="status-text-section">
+        <textarea id="status-inp" placeholder="Ex: Disponible, En reunion, A plus tard..." maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:90px;color:#111b21;box-sizing:border-box;"></textarea>
+        <div style="font-size:11px;color:#8696a0;text-align:right;margin:4px 0 10px;">Max 139 caractères</div>
+      </div>
+      <!-- Photo section -->
+      <div id="status-photo-section" style="display:none;">
+        <div id="status-photo-preview" onclick="document.getElementById('status-photo-inp').click()" style="width:100%;height:180px;background:#f0f2f5;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
+          <div id="status-photo-placeholder" style="text-align:center;color:#8696a0;"><div style="font-size:36px;">📷</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une photo</div></div>
+          <img id="status-photo-img" style="display:none;width:100%;height:100%;object-fit:cover;" alt=""/>
+        </div>
+        <input type="file" id="status-photo-inp" accept="image/*" style="display:none" onchange="previewStatusPhoto(this)"/>
+        <input type="text" id="status-photo-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
       <button onclick="saveStatus()" style="width:100%;padding:14px;background:#25d366;border:none;border-radius:13px;color:#000;font-family:var(--F);font-size:15px;font-weight:800;cursor:pointer;">✅ Publier</button>
       <button onclick="closeStatusModal()" style="width:100%;padding:12px;background:#f0f2f5;border:none;border-radius:13px;color:#667781;font-family:var(--F);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">Annuler</button>
     </div>
@@ -404,11 +442,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       </div>
     </div>
     <div style="background:#fff;margin-bottom:8px;">
-      <div class="sp-item" onclick="exportData()">
-        <span style="font-size:20px;">💾</span>
-        <div class="sp-item-info"><div>Exporter mes données</div><div style="font-size:12px;color:#667781;">Télécharger l'historique</div></div>
-        <span style="color:#ccc;font-size:18px;">›</span>
-      </div>
+
       <div class="sp-item" onclick="openAbout()">
         <span style="font-size:20px;">ℹ️</span>
         <div class="sp-item-info"><div>À propos de Bermax</div><div style="font-size:12px;color:#667781;">Version 3.2.0</div></div>
@@ -416,9 +450,9 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       </div>
     </div>
     <div style="background:#fff;margin-bottom:24px;">
-      <div class="sp-item" onclick="logout()" style="color:#ef4444;">
+      <div class="sp-item" onclick="confirmLogout()" style="color:#ef4444;">
         <span style="font-size:20px;">🚪</span>
-        <div class="sp-item-info" style="color:#ef4444;"><div style="color:#ef4444;">Se déconnecter</div><div style="font-size:12px;color:#ef4444;">Déconnecte ce compte</div></div>
+        <div class="sp-item-info"><div style="color:#ef4444;">Se déconnecter</div><div style="font-size:12px;color:#ef4444;">Déconnecte ce compte de cet appareil</div></div>
       </div>
     </div>
     <div style="text-align:center;font-size:11px;color:#8696a0;padding:8px 16px 24px;">Bermax v3.2.0 • Messagerie sécurisée</div>
@@ -702,7 +736,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.3.0";
+const APP_VERSION="3.4.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1046,31 +1080,79 @@ function renderCallLog(){
   });
 }
 
+// ══ LOGOUT CONFIRM ══
+function confirmLogout(){$("logout-modal").style.display="flex";}
+function closeLogoutModal(){$("logout-modal").style.display="none";}
+
 // ══ STATUS ══
 let myStatus="";
 let contactsStatuses=[];
 
-function openAddStatus(){
-  const modal=$("status-modal");if(!modal)return;
-  const inp=$("status-inp");if(inp)inp.value=myStatus||"";
-  modal.style.display="flex";
-  setTimeout(()=>{if(inp)inp.focus();},300);
-}
-function closeStatusModal(){const m=$("status-modal");if(m)m.style.display="none";}
+let _statusType="text",_statusPhotoData=null;
 
-function saveStatus(){
-  const inp=$("status-inp");if(!inp)return;
-  const text=inp.value.trim();
-  myStatus=text;
-  localStorage.setItem("bstatus_"+myId(),text);
-  // Save to Firebase for others to see
-  if(window._firebaseReady&&myEmail){
-    window._set(getFB("statuses/"+myId()),{
-      email:myEmail,text,ts:Date.now(),color:myColor,pic:picData||""
-    });
+function openAddStatus(){
+  _statusType="text";_statusPhotoData=null;
+  const inp=$("status-inp");if(inp)inp.value=myStatus||"";
+  setStatusType("text");
+  $("status-modal").style.display="flex";
+  setTimeout(()=>{if(inp&&_statusType==="text")inp.focus();},300);
+}
+function closeStatusModal(){$("status-modal").style.display="none";_statusPhotoData=null;}
+
+function setStatusType(type){
+  _statusType=type;
+  $("status-text-section").style.display=type==="text"?"block":"none";
+  $("status-photo-section").style.display=type==="photo"?"block":"none";
+  const tb=$("stype-text"),pb=$("stype-photo");
+  if(tb&&pb){
+    tb.style.borderColor=type==="text"?"#25d366":"#e9edef";
+    tb.style.background=type==="text"?"#f0fdf4":"#fff";
+    tb.style.color=type==="text"?"#15803d":"#667781";
+    pb.style.borderColor=type==="photo"?"#25d366":"#e9edef";
+    pb.style.background=type==="photo"?"#f0fdf4":"#fff";
+    pb.style.color=type==="photo"?"#15803d":"#667781";
   }
-  closeStatusModal();renderStatus();
-  showToast(text?"✅ Statut publié !":"✅ Statut effacé");
+}
+
+function previewStatusPhoto(input){
+  if(!input.files||!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    _statusPhotoData=e.target.result;
+    const img=$("status-photo-img"),ph=$("status-photo-placeholder");
+    if(img){img.src=_statusPhotoData;img.style.display="block";}
+    if(ph)ph.style.display="none";
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function saveStatus(){
+  if(_statusType==="text"){
+    const inp=$("status-inp");
+    const text=(inp?inp.value:"").trim();
+    myStatus=text;
+    localStorage.setItem("bstatus_"+myId(),text);
+    if(window._firebaseReady&&myEmail){
+      window._set(getFB("statuses/"+myId()),{
+        type:"text",email:myEmail,text,ts:Date.now(),color:myColor,pic:picData||"",views:[],viewCount:0
+      });
+    }
+    closeStatusModal();renderStatus();renderSettings();
+    showToast(text?"✅ Statut texte publié !":"✅ Statut effacé");
+  }else if(_statusType==="photo"){
+    if(!_statusPhotoData){showToast("❌ Choisissez une photo");return;}
+    const caption=($("status-photo-caption")&&$("status-photo-caption").value)||"";
+    if(window._firebaseReady&&myEmail){
+      window._set(getFB("statuses/"+myId()),{
+        type:"photo",email:myEmail,photoData:_statusPhotoData,
+        text:caption,ts:Date.now(),color:myColor,pic:picData||"",views:[],viewCount:0
+      });
+    }
+    myStatus=caption||"📷 Photo";
+    localStorage.setItem("bstatus_"+myId(),myStatus);
+    closeStatusModal();renderStatus();renderSettings();
+    showToast("✅ Statut photo publié !");
+  }
 }
 
 function renderStatus(){
@@ -1184,14 +1266,6 @@ function toggleTheme(){
   localStorage.setItem("bdark",_darkMode?"1":"0");
 }
 
-function exportData(){
-  const data={email:myEmail,contacts:myContacts,chats:contacts.map(c=>({name:dispName(c),email:c.email,msgs:(c.msgs||[]).length+" messages"})),callLog,status:myStatus,exportedAt:new Date().toISOString()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="bermax_data.json";document.body.appendChild(a);a.click();
-  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
-  showToast("💾 Données exportées !");
-}
 
 function openPrivacyInfo(){
   const msg="Confidentialite Bermax\n\nVos messages sont stockes dans Firebase.\nVos medias sont stockes sur Cloudinary.\nAucune donnee n est vendue a des tiers.";
