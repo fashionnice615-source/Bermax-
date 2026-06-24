@@ -736,7 +736,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.4.0";
+const APP_VERSION="3.5.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1684,20 +1684,41 @@ function startRingtone(){
 function stopRingtone(){clearInterval(_ringInt);_ringInt=null;try{if(_ringCtx)_ringCtx.close();}catch(e){}_ringCtx=null;}
 
 // ══ CALLS WebRTC ══
-const ICE_SERVERS={iceServers:[
+// ICE config — récupère les serveurs TURN dynamiquement via Metered.ca
+let ICE_SERVERS={iceServers:[
   {urls:"stun:stun.l.google.com:19302"},
   {urls:"stun:stun1.l.google.com:19302"},
   {urls:"stun:stun2.l.google.com:19302"},
-  {urls:"stun:stun3.l.google.com:19302"},
   {urls:"stun:stun4.l.google.com:19302"},
-  // Free TURN servers (OpenRelay)
+  // Serveurs TURN gratuits multiples pour fiabilité mondiale
   {urls:"turn:openrelay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
   {urls:"turn:openrelay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
   {urls:"turn:openrelay.metered.ca:443?transport=tcp",username:"openrelayproject",credential:"openrelayproject"},
-  // Backup TURN
-  {urls:"turn:relay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
-  {urls:"turn:relay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:3478",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turns:openrelay.metered.ca:443?transport=tcp",username:"openrelayproject",credential:"openrelayproject"},
+  // Numb TURN (fallback)
+  {urls:"turn:numb.viagenie.ca",username:"webrtc@live.com",credential:"muazkh"},
+  // Xirsys free
+  {urls:["turn:us-turn5.xirsys.com:80?transport=udp","turn:us-turn5.xirsys.com:3478?transport=udp","turn:us-turn5.xirsys.com:3478?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"},
 ]};
+
+// Fetch dynamic TURN credentials from Metered API (more reliable)
+async function fetchTurnServers(){
+  try{
+    const r=await fetch("https://bermax.metered.live/api/v1/turn/credentials?apiKey=freekey");
+    if(r.ok){
+      const servers=await r.json();
+      if(servers&&servers.length){
+        ICE_SERVERS={iceServers:[
+          {urls:"stun:stun.l.google.com:19302"},
+          ...servers
+        ]};
+        console.log("✅ TURN servers loaded:",servers.length);
+        return;
+      }
+    }
+  }catch(e){console.log("TURN fetch failed, using fallback");}
+}
 
 let callLog=[]; // Historique des appels
 
@@ -1707,12 +1728,21 @@ async function startCall(video){
   isVideoCall=video;isCaller=true;
   callChatId=getChatId(myEmail,c.email||c.name);
   showCallUI(dispName(c),video?"📹 Appel vidéo":"📞 Appel vocal","📡 Connexion...",false);
+
+  // Fetch fresh TURN servers before connecting
+  await fetchTurnServers();
+
   try{
     localStream=await navigator.mediaDevices.getUserMedia({audio:true,video});
     if(video){const lv=$("lv");lv.srcObject=localStream;lv.style.display="block";}
   }catch(e){showToast("❌ Accès refusé : "+e.name);hideCallUI();return;}
 
-  peerConn=new RTCPeerConnection(ICE_SERVERS);
+  peerConn=new RTCPeerConnection({
+    ...ICE_SERVERS,
+    iceCandidatePoolSize:10,
+    bundlePolicy:"max-bundle",
+    rtcpMuxPolicy:"require"
+  });
 
   // Monitor connection state
   peerConn.onconnectionstatechange=()=>{
@@ -1791,16 +1821,37 @@ async function acceptIncomingCall(){
   const{c,d,chatId}=incomingCallData;
   isCaller=false;callChatId=chatId;isVideoCall=d.video;
   $("call-acts-incoming").style.display="none";$("call-status").textContent="Connexion...";
+
+  // Fetch fresh TURN servers
+  await fetchTurnServers();
+
   try{
     localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:isVideoCall});
     if(isVideoCall){const lv=$("lv");lv.srcObject=localStream;lv.style.display="block";}
   }catch(e){showToast("❌ "+e.name);hideCallUI();return;}
-  peerConn=new RTCPeerConnection(ICE_SERVERS);
+  peerConn=new RTCPeerConnection({
+    ...ICE_SERVERS,
+    iceCandidatePoolSize:10,
+    bundlePolicy:"max-bundle",
+    rtcpMuxPolicy:"require"
+  });
   localStream.getTracks().forEach(t=>peerConn.addTrack(t,localStream));
   peerConn.ontrack=e=>{const rv=$("rv");rv.srcObject=e.streams[0];rv.style.display="block";};
   peerConn.onicecandidate=e=>{
     if(e.candidate&&window._firebaseReady)
       window._push(getFB("calls/"+callChatId+"/calleeC"),JSON.stringify(e.candidate.toJSON()));
+  };
+  // Monitor connection state for callee
+  peerConn.onconnectionstatechange=()=>{
+    const s=peerConn.connectionState;
+    if(s==="connected")$("call-status").textContent="🔴 En appel";
+    else if(s==="disconnected"||s==="failed"){showToast("📵 Connexion perdue");endCall();}
+  };
+  peerConn.oniceconnectionstatechange=()=>{
+    const s=peerConn.iceConnectionState;
+    if(s==="checking")$("call-status").textContent="🔄 Connexion...";
+    if(s==="connected"||s==="completed")$("call-status").textContent="🔴 En appel";
+    if(s==="failed"){showToast("❌ Connexion impossible");endCall();}
   };
   await peerConn.setRemoteDescription(JSON.parse(d.offer));
   const answer=await peerConn.createAnswer();
