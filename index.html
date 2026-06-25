@@ -740,7 +740,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.6.1";
+const APP_VERSION="3.6.2";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1838,12 +1838,12 @@ async function startCall(video){
     window._onValue(getFB("calls/"+callChatId+"/calleeC"),snap=>{
       snap.forEach(ch=>{try{if(peerConn&&peerConn.remoteDescription)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){console.warn("ICE err:",e);}});
     });
-    // Listen for remote hangup — if other side sets active:false, hang up here too
+    // Listen for remote hangup
+    let _firstActiveSnap=true;
     window._onValue(getFB("calls/"+callChatId+"/active"),snap=>{
+      if(_firstActiveSnap){_firstActiveSnap=false;return;} // ignore initial value
       const active=snap.val();
-      if(active===false&&callChatId){
-        // Other side hung up
-        stopRingtone();
+      if(active===false&&!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
       }
@@ -1954,11 +1954,12 @@ async function acceptIncomingCall(){
         try{if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){}
       });
     });
-    // Listen for remote hangup
+    // Listen for remote hangup (callee side)
+    let _firstActiveSnapCallee=true;
     window._onValue(getFB("calls/"+callChatId+"/active"),snap=>{
+      if(_firstActiveSnapCallee){_firstActiveSnapCallee=false;return;}
       const active=snap.val();
-      if(active===false&&callChatId){
-        stopRingtone();
+      if(active===false&&!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
       }
@@ -1972,29 +1973,41 @@ async function acceptIncomingCall(){
   logCall(incomingCallData.c,isVideoCall,true);
 }
 function rejectCall(){
+  if(_callEnding)return;
+  _callEnding=true;
   stopRingtone();
   if(incomingCallData)logCall(incomingCallData.c,incomingCallData.d&&incomingCallData.d.video,false);
   $("inc-banner").classList.remove("show");
   const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
-  hideCallUI();incomingCallData=null;
-  if(callChatId&&window._firebaseReady)window._update(getFB("calls/"+callChatId),{active:false});
+  // Set active:false so caller knows we rejected
+  if(callChatId&&window._firebaseReady){
+    window._set(getFB("calls/"+callChatId+"/active"),false);
+  }
+  setTimeout(()=>{
+    hideCallUI();incomingCallData=null;callChatId=null;
+    _callEnding=false;
+  },400);
 }
+let _callEnding=false; // guard against double endCall
+
 function endCall(){
+  if(_callEnding)return; // prevent recursive loop
+  _callEnding=true;
   stopCallTimer();
   stopRingtone();
-  // First notify the other side via Firebase BEFORE closing
+  // Notify other side first
   const cid=callChatId;
   if(cid&&window._firebaseReady){
     window._set(getFB("calls/"+cid+"/active"),false);
   }
-  // Small delay so Firebase write completes before we clean up
   setTimeout(()=>{
     if(localStream)localStream.getTracks().forEach(t=>t.stop());
     if(peerConn){try{peerConn.close();}catch(e){}}
     localStream=null;peerConn=null;callChatId=null;incomingCallData=null;
+    _callEnding=false;
     const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
     hideCallUI();
-  },300);
+  },400);
 }
 function showCallUI(name,title,status,incoming){
   const av=$("call-av");
