@@ -740,7 +740,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.6.3";
+const APP_VERSION="3.6.5";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1678,14 +1678,10 @@ function showNotifBanner(title,body,cb){
 }
 
 // ══ RINGTONE + VIBRATION ══
-let _ringCtx=null,_ringInt=null,_vibInt=null,_callTimerInt=null,_callSecs=0;
+let _ringCtx=null,_ringInt=null,_callTimerInt=null,_callSecs=0;
 
 function startRingtone(){
-  // Vibration pattern (long-short-long like phone ring)
-  if(navigator.vibrate){
-    _vibInt=setInterval(()=>navigator.vibrate([800,400,800,400,800]),2500);
-    navigator.vibrate([800,400,800,400,800]);
-  }
+
   // Audio tone
   try{
     _ringCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -1710,8 +1706,7 @@ function startRingtone(){
 
 function stopRingtone(){
   clearInterval(_ringInt);_ringInt=null;
-  clearInterval(_vibInt);_vibInt=null;
-  if(navigator.vibrate)navigator.vibrate(0);
+
   try{if(_ringCtx){_ringCtx.close();_ringCtx=null;}}catch(e){}
 }
 
@@ -1825,7 +1820,7 @@ async function startCall(video){
   if(window._firebaseReady){
     window._set(getFB("calls/"+callChatId),{
       from:myEmail,fromName:dispName({email:myEmail}),
-      offer:JSON.stringify(offer),video,ts:Date.now(),active:true
+      offer:JSON.stringify(offer),video,ts:Date.now(),active:true,ended:null
     });
     window._onValue(getFB("calls/"+callChatId+"/answer"),async snap=>{
       const a=snap.val();
@@ -1839,12 +1834,11 @@ async function startCall(video){
     window._onValue(getFB("calls/"+callChatId+"/calleeC"),snap=>{
       snap.forEach(ch=>{try{if(peerConn&&peerConn.remoteDescription)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){console.warn("ICE err:",e);}});
     });
-    // Listen for remote hangup (caller side)
-    const _activePath="calls/"+callChatId+"/active";
-    let _skipFirst=true;
-    window._onValue(getFB(_activePath),snap=>{
-      if(_skipFirst){_skipFirst=false;return;}
-      if(snap.val()===false&&!_callEnding){
+    // Listen for remote hangup via /ended node
+    const _endedPath="calls/"+callChatId+"/ended";
+    window._onValue(getFB(_endedPath),snap=>{
+      if(!snap.val())return; // null = not ended yet
+      if(!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
       }
@@ -1955,12 +1949,11 @@ async function acceptIncomingCall(){
         try{if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){}
       });
     });
-    // Listen for remote hangup (callee side)
-    const _activePathCallee="calls/"+callChatId+"/active";
-    let _skipFirstCallee=true;
-    window._onValue(getFB(_activePathCallee),snap=>{
-      if(_skipFirstCallee){_skipFirstCallee=false;return;}
-      if(snap.val()===false&&!_callEnding){
+    // Listen for remote hangup (callee side) via /ended node
+    const _endedPathCallee="calls/"+callChatId+"/ended";
+    window._onValue(getFB(_endedPathCallee),snap=>{
+      if(!snap.val())return; // null = not ended yet
+      if(!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
       }
@@ -1978,10 +1971,10 @@ function rejectCall(){
   _callEnding=true;
   stopRingtone(); // stop vibration + audio immediately
   if(incomingCallData)logCall(incomingCallData.c,incomingCallData.d&&incomingCallData.d.video,false);
-  // Notify caller via Firebase
+  // Notify other side via dedicated /ended node
   const cid=callChatId||((incomingCallData&&incomingCallData.chatId)||null);
   if(cid&&window._firebaseReady){
-    window._set(getFB("calls/"+cid+"/active"),false).catch(()=>{});
+    window._set(getFB("calls/"+cid+"/ended"),Date.now()).catch(()=>{});
   }
   callChatId=null;incomingCallData=null;
   $("inc-banner").classList.remove("show");
@@ -1996,10 +1989,10 @@ function endCall(){
   _callEnding=true;
   stopCallTimer();
   stopRingtone(); // stops vibration + audio + clears all intervals
-  // Tell Firebase the call is over — this triggers the other side
+  // Tell Firebase the call is over — write to /ended node
   const cid=callChatId;
   if(cid&&window._firebaseReady){
-    window._set(getFB("calls/"+cid+"/active"),false).catch(()=>{});
+    window._set(getFB("calls/"+cid+"/ended"),Date.now()).catch(()=>{});
   }
   // Stop all media
   if(localStream){localStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});}
@@ -2133,7 +2126,6 @@ function showCallNotification(callerName,isVideo){
         icon:"https://fashionnice615-source.github.io/Bermax-/icon.png",
         tag:"bermax-call",
         requireInteraction:true,  // Keeps notification until user acts
-        vibrate:[500,200,500,200,500]
       });
       n.onclick=()=>{window.focus();showIncomingCallUI();n.close();};
     }catch(e){}
