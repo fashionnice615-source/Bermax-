@@ -740,7 +740,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.6.0";
+const APP_VERSION="3.6.1";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1838,6 +1838,16 @@ async function startCall(video){
     window._onValue(getFB("calls/"+callChatId+"/calleeC"),snap=>{
       snap.forEach(ch=>{try{if(peerConn&&peerConn.remoteDescription)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){console.warn("ICE err:",e);}});
     });
+    // Listen for remote hangup — if other side sets active:false, hang up here too
+    window._onValue(getFB("calls/"+callChatId+"/active"),snap=>{
+      const active=snap.val();
+      if(active===false&&callChatId){
+        // Other side hung up
+        stopRingtone();
+        showToast("📵 Appel terminé");
+        endCall();
+      }
+    });
   }
   $("call-acts-ongoing").style.display="flex";
 }
@@ -1944,10 +1954,18 @@ async function acceptIncomingCall(){
         try{if(peerConn)peerConn.addIceCandidate(new RTCIceCandidate(JSON.parse(ch.val())));}catch(e){}
       });
     });
+    // Listen for remote hangup
+    window._onValue(getFB("calls/"+callChatId+"/active"),snap=>{
+      const active=snap.val();
+      if(active===false&&callChatId){
+        stopRingtone();
+        showToast("📵 Appel terminé");
+        endCall();
+      }
+    });
   }
   $("call-acts-ongoing").style.display="flex";
   $("call-status").textContent="🔴 En appel";
-  // Hide incoming screen, show active call screen
   const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
   $("inc-banner").classList.remove("show");
   startCallTimer();
@@ -1963,13 +1981,20 @@ function rejectCall(){
 }
 function endCall(){
   stopCallTimer();
-  if(localStream)localStream.getTracks().forEach(t=>t.stop());
-  if(peerConn)peerConn.close();
-  localStream=null;peerConn=null;
-  if(callChatId&&window._firebaseReady)window._set(getFB("calls/"+callChatId),{active:false});
-  callChatId=null;incomingCallData=null;
-  const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
-  hideCallUI();
+  stopRingtone();
+  // First notify the other side via Firebase BEFORE closing
+  const cid=callChatId;
+  if(cid&&window._firebaseReady){
+    window._set(getFB("calls/"+cid+"/active"),false);
+  }
+  // Small delay so Firebase write completes before we clean up
+  setTimeout(()=>{
+    if(localStream)localStream.getTracks().forEach(t=>t.stop());
+    if(peerConn){try{peerConn.close();}catch(e){}}
+    localStream=null;peerConn=null;callChatId=null;incomingCallData=null;
+    const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
+    hideCallUI();
+  },300);
 }
 function showCallUI(name,title,status,incoming){
   const av=$("call-av");
