@@ -273,6 +273,10 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @keyframes bld{0%,100%{opacity:1;}50%{opacity:.2;}}
+/* CALL ANIMATIONS */
+@keyframes pulse{0%{transform:scale(1);opacity:1;}100%{transform:scale(1.5);opacity:0;}}
+@keyframes wobble{0%,100%{transform:translateY(0);}25%{transform:translateY(-6px);}75%{transform:translateY(6px);}}
+@keyframes callring{0%,100%{transform:rotate(0deg);}10%{transform:rotate(-15deg);}20%{transform:rotate(15deg);}30%{transform:rotate(-10deg);}40%{transform:rotate(10deg);}50%{transform:rotate(-5deg);}60%{transform:rotate(5deg);}70%,100%{transform:rotate(0deg);}}
 .sp-item{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;border-bottom:1px solid #f0f2f5;}
 .sp-item:hover{background:#f9f9f9;}
 .sp-item-info{flex:1;font-size:14px;font-weight:600;color:#111b21;}
@@ -736,7 +740,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.5.0";
+const APP_VERSION="3.6.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1672,16 +1676,59 @@ function showNotifBanner(title,body,cb){
   clearTimeout(b._t);b._t=setTimeout(()=>{b.style.display="none";},6000);
 }
 
-// ══ RINGTONE ══
-let _ringCtx=null,_ringInt=null;
+// ══ RINGTONE + VIBRATION ══
+let _ringCtx=null,_ringInt=null,_vibInt=null,_callTimerInt=null,_callSecs=0;
+
 function startRingtone(){
+  // Vibration pattern (long-short-long like phone ring)
+  if(navigator.vibrate){
+    _vibInt=setInterval(()=>navigator.vibrate([800,400,800,400,800]),2500);
+    navigator.vibrate([800,400,800,400,800]);
+  }
+  // Audio tone
   try{
     _ringCtx=new(window.AudioContext||window.webkitAudioContext)();
-    function beep(){[880,1100,880,1100].forEach((f,i)=>{const o=_ringCtx.createOscillator(),g=_ringCtx.createGain();o.connect(g);g.connect(_ringCtx.destination);o.frequency.value=f;o.type="sine";const t=_ringCtx.currentTime+i*0.2;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.25,t+0.05);g.gain.linearRampToValueAtTime(0,t+0.18);o.start(t);o.stop(t+0.2);});}
-    beep();_ringInt=setInterval(beep,2500);
-  }catch(e){}
+    function ring(){
+      // WhatsApp-like ring: ascending tones
+      [[700,0],[900,0.3],[700,0.6],[900,0.9]].forEach(([f,delay])=>{
+        const o=_ringCtx.createOscillator(),g=_ringCtx.createGain();
+        o.connect(g);g.connect(_ringCtx.destination);
+        o.frequency.value=f;o.type="sine";
+        const t=_ringCtx.currentTime+delay;
+        g.gain.setValueAtTime(0,t);
+        g.gain.linearRampToValueAtTime(0.3,t+0.05);
+        g.gain.linearRampToValueAtTime(0,t+0.25);
+        o.start(t);o.stop(t+0.3);
+      });
+    }
+    ring();_ringInt=setInterval(ring,2000);
+  }catch(e){console.log("Ring error:",e);}
+  // Request wake lock (keep screen on)
+  if(navigator.wakeLock){navigator.wakeLock.request("screen").catch(()=>{});}
 }
-function stopRingtone(){clearInterval(_ringInt);_ringInt=null;try{if(_ringCtx)_ringCtx.close();}catch(e){}_ringCtx=null;}
+
+function stopRingtone(){
+  clearInterval(_ringInt);_ringInt=null;
+  clearInterval(_vibInt);_vibInt=null;
+  if(navigator.vibrate)navigator.vibrate(0);
+  try{if(_ringCtx){_ringCtx.close();_ringCtx=null;}}catch(e){}
+}
+
+// Call timer
+function startCallTimer(){
+  _callSecs=0;
+  const disp=$("call-timer-display");
+  if(disp)disp.style.display="block";
+  _callTimerInt=setInterval(()=>{
+    _callSecs++;
+    const m=Math.floor(_callSecs/60),s=(_callSecs%60).toString().padStart(2,"0");
+    if(disp)disp.textContent=m+":"+s;
+  },1000);
+}
+function stopCallTimer(){
+  clearInterval(_callTimerInt);_callTimerInt=null;_callSecs=0;
+  const disp=$("call-timer-display");if(disp)disp.style.display="none";
+}
 
 // ══ CALLS WebRTC ══
 // ICE config — récupère les serveurs TURN dynamiquement via Metered.ca
@@ -1783,6 +1830,8 @@ async function startCall(video){
       const a=snap.val();
       if(a&&peerConn&&peerConn.signalingState==="have-local-offer"){
         await peerConn.setRemoteDescription(JSON.parse(a));
+        $("call-status").textContent="🔴 En appel";
+        startCallTimer();
         logCall(c,video,true);
       }
     });
@@ -1803,18 +1852,50 @@ function loadCallLog(){try{const s=localStorage.getItem("bcl_"+myId());if(s)call
 
 function showIncBanner(c,d){
   startRingtone();
+  const dn=dispName(c);
+
+  // Show fullscreen incoming call
+  const screen=$("incoming-call-screen");
+  if(screen){
+    screen.style.display="flex";
+    // Set caller info
+    const av=$("inc-call-av");
+    if(av){
+      av.style.background=c.color||"#25d366";
+      av.innerHTML=c.pic?`<img src="${c.pic}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;"/>`:dn[0].toUpperCase();
+    }
+    $("inc-call-name").textContent=dn;
+    $("inc-call-email").textContent=c.email||"";
+    $("inc-call-type").textContent=d.video?"📹 Appel vidéo entrant":"📞 Appel vocal entrant";
+  }
+
+  // Also show small banner as fallback
   $("inc-icon").textContent=d.video?"📹":"📞";
   $("inc-label").textContent=d.video?"Appel vidéo":"Appel vocal";
-  $("inc-from").textContent=dispName(c);
+  $("inc-from").textContent=dn;
   $("inc-banner").classList.add("show");
-  showNotifBanner(dispName(c),d.video?"📹 Appel vidéo entrant":"📞 Appel vocal entrant",()=>showIncomingCallUI());
-  setTimeout(()=>{$("inc-banner").classList.remove("show");stopRingtone();},25000);
+
+  // System notification
+  showNotifBanner(dn,d.video?"📹 Appel vidéo entrant":"📞 Appel vocal entrant",()=>showIncomingCallUI());
+  showCallNotification(dn,d.video);
+
+  // Auto-dismiss after 30 seconds (missed call)
+  setTimeout(()=>{
+    $("inc-banner").classList.remove("show");
+    if(screen)screen.style.display="none";
+    stopRingtone();
+    if(incomingCallData)logCall(incomingCallData.c,d.video,false);
+    incomingCallData=null;
+  },30000);
 }
+
 function showIncomingCallUI(){
-  $("inc-banner").classList.remove("show");
+  // Already showing fullscreen - just in case called from banner
+  const screen=$("incoming-call-screen");
+  if(screen&&screen.style.display==="flex")return;
   if(!incomingCallData)return;
   const{c,d}=incomingCallData;
-  showCallUI(dispName(c),d.video?"📹 Appel vidéo":"📞 Appel vocal","Appel entrant...",true);
+  showIncBanner(c,d);
 }
 async function acceptIncomingCall(){
   stopRingtone();if(!incomingCallData)return;
@@ -1864,34 +1945,47 @@ async function acceptIncomingCall(){
       });
     });
   }
-  $("call-acts-ongoing").style.display="flex";$("call-status").textContent="🔴 En appel";
+  $("call-acts-ongoing").style.display="flex";
+  $("call-status").textContent="🔴 En appel";
+  // Hide incoming screen, show active call screen
+  const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
+  $("inc-banner").classList.remove("show");
+  startCallTimer();
   logCall(incomingCallData.c,isVideoCall,true);
 }
 function rejectCall(){
   stopRingtone();
   if(incomingCallData)logCall(incomingCallData.c,incomingCallData.d&&incomingCallData.d.video,false);
-  $("inc-banner").classList.remove("show");hideCallUI();incomingCallData=null;
+  $("inc-banner").classList.remove("show");
+  const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
+  hideCallUI();incomingCallData=null;
   if(callChatId&&window._firebaseReady)window._update(getFB("calls/"+callChatId),{active:false});
 }
 function endCall(){
+  stopCallTimer();
   if(localStream)localStream.getTracks().forEach(t=>t.stop());
   if(peerConn)peerConn.close();
   localStream=null;peerConn=null;
   if(callChatId&&window._firebaseReady)window._set(getFB("calls/"+callChatId),{active:false});
-  callChatId=null;incomingCallData=null;hideCallUI();
+  callChatId=null;incomingCallData=null;
+  const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
+  hideCallUI();
 }
 function showCallUI(name,title,status,incoming){
-  $("call-av").textContent=name?name[0].toUpperCase():"?";
+  const av=$("call-av");
+  if(av){av.textContent=name?name[0].toUpperCase():"?";}
   $("call-name").textContent=name;$("call-status").textContent=status;
   $("call-acts-ongoing").style.display=incoming?"none":"flex";
-  $("call-acts-incoming").style.display=incoming?"flex":"none";
-  $("call-modal").classList.add("show");
+  $("call-acts-incoming")&&($("call-acts-incoming").style.display=incoming?"flex":"none");
+  if(!incoming)$("call-modal").classList.add("show");
 }
 function hideCallUI(){
   $("call-modal").classList.remove("show");
+  const inc=$("incoming-call-screen");if(inc)inc.style.display="none";
   ["rv","lv"].forEach(id=>{const v=$(id);if(v){v.srcObject=null;v.style.display="none";}});
   $("call-acts-ongoing").style.display="none";
-  $("call-acts-incoming").style.display="none";
+  const ci=$("call-acts-incoming");if(ci)ci.style.display="none";
+  stopCallTimer();
 }
 function toggleMicCall(){micMuted=!micMuted;if(localStream)localStream.getAudioTracks().forEach(t=>t.enabled=!micMuted);$("btn-mute-call").textContent=micMuted?"🔇":"🎤";}
 function toggleCamCall(){camOff=!camOff;if(localStream)localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);$("btn-cam-call").textContent=camOff?"📵":"📷";}
@@ -1978,9 +2072,31 @@ document.addEventListener("click",e=>{if(!e.target.closest(".emj-btn")&&!e.targe
 document.addEventListener("DOMContentLoaded",()=>{
   const b=$("notif-banner");
   if(b){b.addEventListener("click",()=>{b.style.display="none";if(b._cb)b._cb();});}
-  if("Notification" in window&&Notification.permission==="default")
-    document.addEventListener("click",()=>Notification.requestPermission(),{once:true});
+  // Request notification permission immediately on first interaction
+  const askPerms=async()=>{
+    if("Notification" in window&&Notification.permission==="default"){
+      await Notification.requestPermission();
+    }
+  };
+  document.addEventListener("click",askPerms,{once:true});
+  document.addEventListener("touchstart",askPerms,{once:true});
 });
+
+// Show system notification for incoming call
+function showCallNotification(callerName,isVideo){
+  if("Notification" in window&&Notification.permission==="granted"){
+    try{
+      const n=new Notification(isVideo?"📹 Appel vidéo":"📞 Appel vocal",{
+        body:callerName+" vous appelle sur Bermax",
+        icon:"https://fashionnice615-source.github.io/Bermax-/icon.png",
+        tag:"bermax-call",
+        requireInteraction:true,  // Keeps notification until user acts
+        vibrate:[500,200,500,200,500]
+      });
+      n.onclick=()=>{window.focus();showIncomingCallUI();n.close();};
+    }catch(e){}
+  }
+}
 
 // ══ BACK BUTTON (Android) ══
 history.pushState(null,null,location.href);
