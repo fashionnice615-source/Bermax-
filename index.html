@@ -790,7 +790,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.7.0";
+const APP_VERSION="3.7.1";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -993,12 +993,21 @@ function subToCalls(c){
   const chatId=getChatId(myEmail,c.email||c.name);
   window._onValue(getFB("calls/"+chatId),snap=>{
     const d=snap.val();
-    if(!d||!d.active||d.from===myEmail)return;
+    if(!d||d.from===myEmail)return;
+    // If call already ended, ignore
+    if(d.ended||!d.active)return;
     if(c._lastCallTs===d.ts)return;
     c._lastCallTs=d.ts;
     incomingCallData={c,d,chatId};
-    callChatId=chatId; // set early so rejectCall can write to Firebase
+    callChatId=chatId;
     showIncBanner(c,d);
+    // ✅ Listen for caller hangup RIGHT HERE (works for reject AND accept)
+    window._onValue(getFB("calls/"+chatId+"/ended"),snap2=>{
+      if(snap2.val()&&!_callEnding){
+        showToast("📵 Appel annulé");
+        endCall();
+      }
+    });
   });
 }
 
@@ -1865,8 +1874,9 @@ async function startCall(video){
         catch(e){}
       });
     });
-    // ✅ Listen for remote hangup via /ended
-    window._onValue(getFB("calls/"+callChatId+"/ended"),snap=>{
+    // ✅ Listen for remote hangup via /ended (callee hung up or rejected)
+    const _myCallChatId=callChatId;
+    window._onValue(getFB("calls/"+_myCallChatId+"/ended"),snap=>{
       if(snap.val()&&!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
@@ -1940,8 +1950,9 @@ async function acceptIncomingCall(){
         catch(e){}
       });
     });
-    // ✅ Listen for remote hangup via /ended
-    window._onValue(getFB("calls/"+callChatId+"/ended"),snap=>{
+    // ✅ Listen for remote hangup via /ended (callee hung up or rejected)
+    const _myCallChatId=callChatId;
+    window._onValue(getFB("calls/"+_myCallChatId+"/ended"),snap=>{
       if(snap.val()&&!_callEnding){
         showToast("📵 Appel terminé");
         endCall();
@@ -1959,9 +1970,9 @@ function rejectCall(){
   stopRingtone();
   const cid=callChatId||(incomingCallData&&incomingCallData.chatId)||null;
   if(incomingCallData)logCall(incomingCallData.c,incomingCallData.d&&incomingCallData.d.video,false);
-  // ✅ Write /ended so caller knows
+  // ✅ Write /ended AND active:false so caller knows
   if(cid&&window._firebaseReady){
-    window._set(getFB("calls/"+cid+"/ended"),Date.now());
+    window._update(getFB("calls/"+cid),{ended:Date.now(),active:false});
   }
   incomingCallData=null;callChatId=null;
   hideCallScreen();
@@ -1974,10 +1985,10 @@ function endCall(){
   _callEnding=true;
   stopRingtone();
   stopCallTimer();
-  // ✅ Write /ended FIRST so other side knows immediately
+  // ✅ Write /ended AND active:false so both listeners catch it
   const cid=callChatId;
   if(cid&&window._firebaseReady){
-    window._set(getFB("calls/"+cid+"/ended"),Date.now());
+    window._update(getFB("calls/"+cid),{ended:Date.now(),active:false});
   }
   // Stop media
   if(localStream)localStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});
