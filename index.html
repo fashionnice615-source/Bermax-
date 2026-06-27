@@ -651,58 +651,54 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
     <div id="call-status" style="font-size:15px;color:rgba(255,255,255,.7);margin-bottom:8px;text-align:center;">Appel entrant...</div>
     <div id="call-timer-display" style="display:none;font-size:16px;color:#25d366;font-weight:700;letter-spacing:2px;">0:00</div>
 
-    <!-- ══ BOUTONS APPEL ENTRANT ══ -->
-    <div id="call-acts-incoming" style="display:none;position:absolute;bottom:90px;left:0;right:0;">
-      <div style="display:flex;justify-content:center;align-items:center;gap:80px;">
+    <!-- ══ BOUTONS APPEL ENTRANT — même ligne, bien espacés ══ -->
+    <div id="call-acts-incoming" style="display:none;position:absolute;bottom:80px;left:0;right:0;">
+      <div style="display:flex;flex-direction:row;justify-content:space-around;align-items:center;padding:0 60px;">
 
-        <!-- 🔴 Refuser -->
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <button onclick="rejectCall()" style="width:58px;height:58px;border-radius:50%;background:#dc2626;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(220,38,38,.5);">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z" transform="rotate(135 12 12)"/></svg>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <button onclick="rejectCall()" style="width:56px;height:56px;border-radius:50%;background:#e53935;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(229,57,53,.5);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z" transform="rotate(135 12 12)"/></svg>
           </button>
-          <span style="color:rgba(255,255,255,.75);font-size:12px;font-weight:600;">Refuser</span>
+          <span style="color:rgba(255,255,255,.8);font-size:12px;font-weight:600;">Refuser</span>
         </div>
 
-        <!-- 🟢 Décrocher -->
-        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <button onclick="acceptIncomingCall()" style="width:58px;height:58px;border-radius:50%;background:#25d366;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(37,211,102,.5);animation:wobble 1.4s ease-in-out infinite;">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z"/></svg>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <button onclick="acceptIncomingCall()" style="width:56px;height:56px;border-radius:50%;background:#25d366;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.5);animation:wobble 1.4s ease-in-out infinite;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z"/></svg>
           </button>
-          <span style="color:rgba(255,255,255,.75);font-size:12px;font-weight:600;">Décrocher</span>
+          <span style="color:rgba(255,255,255,.8);font-size:12px;font-weight:600;">Décrocher</span>
         </div>
 
       </div>
     </div>
 
-    <!-- ══ BOUTONS APPEL EN COURS ══ -->
-    <div id="call-acts-ongoing" style="display:none;position:absolute;bottom:70px;left:0;right:0;padding:0 24px;">
+    <!-- ══ BOUTONS APPEL EN COURS — même ligne, bien espacés ══ -->
+    <div id="call-acts-ongoing" style="display:none;position:absolute;bottom:70px;left:0;right:0;">
+      <div style="display:flex;flex-direction:row;justify-content:space-around;align-items:center;padding:0 24px;">
 
-      <!-- Ligne 1 : Micro · Caméra · HP -->
-      <div style="display:flex;justify-content:space-evenly;align-items:flex-start;margin-bottom:28px;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <button id="btn-mute-call" onclick="toggleMicCall()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button>
-          <span style="color:rgba(255,255,255,.65);font-size:11px;font-weight:600;">Micro</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <button id="btn-mute-call" onclick="toggleMicCall()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.2);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button>
+          <span style="color:rgba(255,255,255,.7);font-size:11px;font-weight:600;">Micro</span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <button id="btn-cam-call" onclick="toggleCamCall()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📷</button>
-          <span style="color:rgba(255,255,255,.65);font-size:11px;font-weight:600;">Caméra</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <button id="btn-speaker" onclick="toggleSpeaker()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔊</button>
-          <span style="color:rgba(255,255,255,.65);font-size:11px;font-weight:600;">HP</span>
-        </div>
-      </div>
 
-      <!-- Ligne 2 : Raccrocher centré -->
-      <div style="display:flex;justify-content:center;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <button onclick="endCall()" style="width:58px;height:58px;border-radius:50%;background:#dc2626;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(220,38,38,.5);">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z" transform="rotate(135 12 12)"/></svg>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <button id="btn-cam-call" onclick="toggleCamCall()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.2);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📷</button>
+          <span style="color:rgba(255,255,255,.7);font-size:11px;font-weight:600;">Caméra</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <button id="btn-speaker" onclick="toggleSpeaker()" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.2);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔊</button>
+          <span style="color:rgba(255,255,255,.7);font-size:11px;font-weight:600;">HP</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <button onclick="endCall()" style="width:52px;height:52px;border-radius:50%;background:#e53935;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(229,57,53,.5);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.29 21 3 13.71 3 4.99c0-.55.45-1 1-1H7.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.23 1.01L6.6 10.8z" transform="rotate(135 12 12)"/></svg>
           </button>
-          <span style="color:rgba(255,255,255,.65);font-size:11px;font-weight:600;">Raccrocher</span>
+          <span style="color:rgba(255,255,255,.7);font-size:11px;font-weight:600;">Fin</span>
         </div>
-      </div>
 
+      </div>
     </div>
 
   </div>
@@ -804,7 +800,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.8.2";
+const APP_VERSION="3.8.3";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
