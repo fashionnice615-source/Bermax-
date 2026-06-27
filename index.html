@@ -798,7 +798,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.7.3";
+const APP_VERSION="3.7.4";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1072,9 +1072,53 @@ function loadContactsFB(){
 // Écouter messages d'inconnus via "incoming"
 function listenIncoming(){
   if(!window._firebaseReady||!myEmail)return;
+
+  // Global listener for incoming calls (works even without contact in list)
+  window._onValue(getFB("incoming/"+myId()+"/pendingCall"),snap=>{
+    const d=snap.val();
+    if(!d||!d.chatId||!d.from||d.from===myEmail)return;
+    if(_callEnding||$("call-screen").style.display!=="none")return;
+
+    // Fetch the call offer from Firebase
+    window._onValue(getFB("calls/"+d.chatId),callSnap=>{
+      const callData=callSnap.val();
+      if(!callData||callData.ended||!callData.active||!callData.offer)return;
+      if(callData.from===myEmail)return;
+
+      // Find or create contact for caller
+      const callerId=toId(d.from);
+      let callerContact=contacts.find(x=>x.id===callerId);
+      if(!callerContact){
+        const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+        const ini=d.from.substring(0,2).toUpperCase();
+        callerContact={id:callerId,name:d.from,email:d.from,customName:"",ini,color,pic:"",status:"En ligne",msgs:[],unread:0};
+        contacts.unshift(callerContact);
+        myContacts.push({...callerContact});
+        renderChats();renderContacts();
+      }
+
+      if(callerContact._lastCallTs===callData.ts)return;
+      callerContact._lastCallTs=callData.ts;
+
+      incomingCallData={c:callerContact,d:callData,chatId:d.chatId};
+      callChatId=d.chatId;
+      console.log("📲 Incoming call via pendingCall from",d.from);
+      showIncBanner(callerContact,callData);
+
+      // Listen for hangup
+      window._onValue(getFB("calls/"+d.chatId+"/ended"),snap2=>{
+        if(snap2.val()&&!_callEnding){
+          showToast("📵 Appel annulé");
+          endCall();
+        }
+      });
+    },{onlyOnce:true});
+  });
+
   window._onValue(getFB("incoming/"+myId()),snap=>{
     snap.forEach(ch=>{
       const d=ch.val();if(!d)return;
+      if(ch.key==="pendingCall")return; // handled above
       const sEmail=typeof d==="string"?d:(d.email||"");
       if(!sEmail||sEmail===myEmail)return;
       const sId=toId(sEmail);
@@ -1876,6 +1920,11 @@ async function startCall(video){
       from:myEmail,offer:JSON.stringify(offer),
       video,ts:Date.now(),active:true,ended:null
     });
+    // Notify receiver directly via incoming/{receiverId}/pendingCall
+    const receiverId=toId(c.email||c.name);
+    window._set(getFB("incoming/"+receiverId+"/pendingCall"),{
+      chatId:callChatId,from:myEmail,video,ts:Date.now()
+    });
     // Listen for answer
     window._onValue(getFB("calls/"+callChatId+"/answer"),async snap=>{
       const a=snap.val();
@@ -2008,6 +2057,8 @@ function endCall(){
   const cid=callChatId;
   if(cid&&window._firebaseReady){
     window._update(getFB("calls/"+cid),{ended:Date.now(),active:false});
+    // Clear pendingCall for both sides
+    window._set(getFB("incoming/"+myId()+"/pendingCall"),null);
   }
   // Stop media
   if(localStream)localStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});
