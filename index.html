@@ -806,7 +806,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.8.4";
+const APP_VERSION="3.8.5";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -2376,15 +2376,49 @@ function showCallNotification(callerName,isVideo){
   }
 }
 
-// ══ BACK BUTTON (Android) ══
-history.pushState(null,null,location.href);
-window.addEventListener("popstate",()=>{
+// ══ BACK BUTTON (Android) — empêche de quitter l'application ══
+// Push multiple états pour avoir de la marge
+function pushBackStack(){
   history.pushState(null,null,location.href);
-  if($("fullscreen").classList.contains("show")){closeFullscreen();}
-  else if($("media-preview").classList.contains("show")){closeMediaPreview();}
-  else if($("lang-modal").classList.contains("show")){closeLang();}
-  else if($("call-modal").classList.contains("show")){/* ne pas fermer l'appel */}
-  else if(activeId){goBack();}
+  history.pushState(null,null,location.href);
+  history.pushState(null,null,location.href);
+}
+pushBackStack();
+
+window.addEventListener("popstate",e=>{
+  // Toujours repousser un état pour ne jamais quitter
+  history.pushState(null,null,location.href);
+
+  // Fermer dans l'ordre de priorité
+  if($("fullscreen")&&$("fullscreen").classList.contains("show")){
+    closeFullscreen();
+  }else if($("media-preview")&&$("media-preview").classList.contains("show")){
+    closeMediaPreview();
+  }else if($("status-modal")&&$("status-modal").style.display==="flex"){
+    closeStatusModal();
+  }else if($("logout-modal")&&$("logout-modal").style.display==="flex"){
+    closeLogoutModal();
+  }else if($("lang-modal")&&$("lang-modal").classList.contains("show")){
+    closeLang();
+  }else if($("add-modal")&&$("add-modal").classList.contains("show")){
+    closeAdd();
+  }else if($("rename-modal")&&$("rename-modal").classList.contains("show")){
+    closeRename();
+  }else if($("del-modal")&&$("del-modal").classList.contains("show")){
+    closeDel();
+  }else if($("copy-sheet")&&$("copy-sheet").style.display==="flex"){
+    closeCopySheet();
+  }else if($("chat-menu")&&$("chat-menu").style.display==="flex"){
+    closeChatMenu();
+  }else if($("media-picker")&&$("media-picker").classList.contains("show")){
+    closeMediaPicker();
+  }else if($("call-screen")&&$("call-screen").style.display==="flex"){
+    // Ne pas fermer l'appel avec retour
+  }else if(activeId){
+    // Revenir à la liste des discussions
+    goBack();
+  }
+  // Si aucune condition : on reste dans l'app (ne fait rien)
 });
 
 // ══ INIT ══
