@@ -331,68 +331,112 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <button onclick="openAddStatus()" style="background:rgba(255,255,255,.2);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:6px 14px;">+ Ajouter</button>
     </div>
     <div style="flex:1;overflow-y:auto;background:#fff;">
-      <div style="border-bottom:1px solid #f0f2f5;">
-        <div style="padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;" onclick="myStatus?viewMyStatus():openAddStatus()">
-          <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;position:relative;flex-shrink:0;">M
+      <!-- Mon statut -->
+      <div style="padding:6px 0 2px 16px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;background:#f0f2f5;">Mon statut</div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid #f0f2f5;cursor:pointer;" onclick="myStatus?viewMyStatus():openAddStatus()">
+        <div style="position:relative;flex-shrink:0;">
+          <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;overflow:hidden;">M
             <div style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#25d366;border:2px solid #fff;">➕</div>
           </div>
-          <div style="flex:1;">
-            <div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div>
-            <div id="my-status-text" style="font-size:12px;color:#667781;margin-top:2px;">Appuie pour ajouter un statut</div>
-          </div>
-          <button onclick="event.stopPropagation();openAddStatus()" style="background:none;border:none;color:#25d366;font-size:22px;cursor:pointer;padding:4px;">✏️</button>
         </div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div>
+          <div id="my-status-text" style="font-size:12px;color:#667781;margin-top:2px;">Appuie pour ajouter un statut</div>
+        </div>
+        <button onclick="event.stopPropagation();openAddStatus()" style="background:none;border:none;color:#25d366;font-size:18px;cursor:pointer;">✏️</button>
       </div>
-      <div style="padding:8px 16px 4px;font-size:12px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;background:#f0f2f5;">Récentes</div>
+      <!-- Statuts contacts -->
+      <div style="padding:6px 0 2px 16px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;background:#f0f2f5;">Récentes</div>
       <div id="contacts-status-list"></div>
     </div>
   </div>
 
-  <!-- LOGOUT CONFIRM MODAL -->
-  <div id="logout-modal" onclick="if(event.target===this)closeLogoutModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:7000;align-items:center;justify-content:center;padding:20px;">
-    <div style="width:100%;max-width:340px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-      <div style="padding:24px 20px 16px;text-align:center;">
-        <div style="font-size:40px;margin-bottom:12px;">🚪</div>
-        <div style="font-size:17px;font-weight:800;color:#111b21;margin-bottom:8px;">Se déconnecter ?</div>
-        <div style="font-size:13px;color:#667781;line-height:1.5;">Vous serez déconnecté de votre compte Bermax sur cet appareil. Vos messages et contacts resteront sauvegardés.</div>
-      </div>
-      <div style="border-top:1px solid #f0f2f5;display:flex;">
-        <button onclick="closeLogoutModal()" style="flex:1;padding:16px;background:none;border:none;border-right:1px solid #f0f2f5;font-family:var(--F);font-size:15px;font-weight:700;color:#667781;cursor:pointer;">Annuler</button>
-        <button onclick="logout()" style="flex:1;padding:16px;background:none;border:none;font-family:var(--F);font-size:15px;font-weight:700;color:#ef4444;cursor:pointer;">Se déconnecter</button>
-      </div>
-    </div>
-  </div>
+<!-- STATUS MODAL -->
+  <div id="status-modal" onclick="if(event.target===this)closeStatusModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:6000;align-items:flex-end;justify-content:center;">
+    <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 36px;animation:sup .25s ease;">
+      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 14px;"></div>
+      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:16px;">Ajouter un statut</div>
 
-  <!-- STATUS MODAL -->
-  <div id="status-modal" onclick="if(event.target===this)closeStatusModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:6000;align-items:flex-end;justify-content:center;">
-    <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 30px;animation:sup .25s ease;">
-      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 10px;"></div>
-      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:14px;">Ajouter un statut</div>
       <!-- Type selector -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button id="stype-text" onclick="setStatusType('text')" style="flex:1;padding:10px;border:2px solid #25d366;border-radius:12px;background:#f0fdf4;color:#15803d;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">✏️ Texte</button>
-        <button id="stype-photo" onclick="setStatusType('photo')" style="flex:1;padding:10px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">📷 Photo</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button id="stype-text" onclick="setStatusType('text')" style="flex:1;padding:10px 6px;border:2px solid #25d366;border-radius:12px;background:#f0fdf4;color:#15803d;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">✏️ Texte</button>
+        <button id="stype-photo" onclick="setStatusType('photo')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">📷 Photo</button>
+        <button id="stype-video" onclick="setStatusType('video')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">🎬 Vidéo</button>
+        <button id="stype-audio" onclick="setStatusType('audio')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">🎤 Audio</button>
       </div>
-      <!-- Text section -->
+
+      <!-- Texte -->
       <div id="status-text-section">
-        <textarea id="status-inp" placeholder="Ex: Disponible, En reunion, A plus tard..." maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:90px;color:#111b21;box-sizing:border-box;"></textarea>
+        <textarea id="status-inp" placeholder="Que pensez-vous aujourd'hui ?" maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:90px;color:#111b21;box-sizing:border-box;"></textarea>
         <div style="font-size:11px;color:#8696a0;text-align:right;margin:4px 0 10px;">Max 139 caractères</div>
       </div>
-      <!-- Photo section -->
+
+      <!-- Photo -->
       <div id="status-photo-section" style="display:none;">
-        <div id="status-photo-preview" onclick="document.getElementById('status-photo-inp').click()" style="width:100%;height:180px;background:#f0f2f5;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
-          <div id="status-photo-placeholder" style="text-align:center;color:#8696a0;"><div style="font-size:36px;">📷</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une photo</div></div>
+        <div id="status-photo-preview" onclick="document.getElementById('status-photo-inp').click()" style="width:100%;height:200px;background:#f0f2f5;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
+          <div id="status-photo-placeholder" style="text-align:center;color:#8696a0;"><div style="font-size:40px;">📷</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une photo</div></div>
           <img id="status-photo-img" style="display:none;width:100%;height:100%;object-fit:cover;" alt=""/>
         </div>
         <input type="file" id="status-photo-inp" accept="image/*" style="display:none" onchange="previewStatusPhoto(this)"/>
         <input type="text" id="status-photo-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
       </div>
+
+      <!-- Vidéo -->
+      <div id="status-video-section" style="display:none;">
+        <div id="status-video-preview" onclick="document.getElementById('status-video-inp').click()" style="width:100%;height:200px;background:#000;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
+          <div id="status-video-placeholder" style="text-align:center;color:#fff;"><div style="font-size:40px;">🎬</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une vidéo</div></div>
+          <video id="status-video-el" style="display:none;width:100%;height:100%;object-fit:cover;" muted playsinline></video>
+        </div>
+        <input type="file" id="status-video-inp" accept="video/*" style="display:none" onchange="previewStatusVideo(this)"/>
+        <input type="text" id="status-video-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
+
+      <!-- Audio -->
+      <div id="status-audio-section" style="display:none;">
+        <div style="background:#f0f2f5;border-radius:14px;padding:20px;text-align:center;margin-bottom:10px;">
+          <div id="status-audio-status" style="font-size:14px;color:#667781;margin-bottom:14px;">Appuie pour enregistrer</div>
+          <button id="status-audio-btn" onclick="toggleStatusAudio()" style="width:70px;height:70px;border-radius:50%;background:#25d366;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;">🎤</button>
+          <div id="status-audio-timer" style="font-size:18px;font-weight:700;color:#111b21;margin-top:12px;display:none;">0:00</div>
+          <audio id="status-audio-preview" controls style="width:100%;margin-top:12px;display:none;"></audio>
+        </div>
+        <input type="text" id="status-audio-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
+
       <button onclick="saveStatus()" style="width:100%;padding:14px;background:#25d366;border:none;border-radius:13px;color:#000;font-family:var(--F);font-size:15px;font-weight:800;cursor:pointer;">✅ Publier</button>
       <button onclick="closeStatusModal()" style="width:100%;padding:12px;background:#f0f2f5;border:none;border-radius:13px;color:#667781;font-family:var(--F);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">Annuler</button>
     </div>
   </div>
 
-  <!-- SETTINGS PANEL -->
+  <!-- STATUS VIEWER (plein écran) -->
+  <div id="status-viewer" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:8000;flex-direction:column;">
+    <!-- Progress bar -->
+    <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:10px 10px 0;">
+      <div style="height:3px;background:rgba(255,255,255,.3);border-radius:2px;">
+        <div id="sv-progress" style="height:100%;background:#fff;border-radius:2px;width:0%;transition:width linear;"></div>
+      </div>
+    </div>
+    <!-- Header -->
+    <div style="position:absolute;top:20px;left:0;right:0;z-index:2;padding:0 14px;display:flex;align-items:center;gap:10px;">
+      <div id="sv-av" style="width:36px;height:36px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;"></div>
+      <div style="flex:1;"><div id="sv-name" style="font-size:13px;font-weight:700;color:#fff;"></div><div id="sv-time" style="font-size:11px;color:rgba(255,255,255,.7);"></div></div>
+      <button onclick="closeStatusViewer()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>
+    </div>
+    <!-- Content -->
+    <div id="sv-content" style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;">
+      <img id="sv-img" style="display:none;max-width:100%;max-height:100%;object-fit:contain;" alt=""/>
+      <video id="sv-vid" style="display:none;max-width:100%;max-height:100%;" playsinline controls></video>
+      <audio id="sv-aud" style="display:none;" controls></audio>
+      <div id="sv-text-display" style="display:none;padding:30px;font-size:22px;font-weight:700;color:#fff;text-align:center;line-height:1.5;"></div>
+    </div>
+    <!-- Caption + Views -->
+    <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:20px 16px 30px;">
+      <div id="sv-caption" style="font-size:15px;color:#fff;margin-bottom:10px;"></div>
+      <div id="sv-views" style="font-size:13px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:6px;">👁 <span id="sv-view-count">0</span> vue(s)</div>
+      <div id="sv-viewers-list" style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;"></div>
+    </div>
+  </div>
+
+<!-- SETTINGS PANEL -->
   <div id="settings-panel" style="display:none;flex-direction:column;flex:1;overflow-y:auto;background:#f0f2f5;">
     <div style="padding:12px 16px;background:#25d366;">
       <span style="font-size:16px;font-weight:800;color:#fff;">⚙️ Paramètres</span>
@@ -806,7 +850,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.8.5";
+const APP_VERSION="3.9.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1180,9 +1224,9 @@ function switchNav(tab){
   const statusP=$("status-panel");if(statusP)statusP.style.display=tab==="status"?"flex":"none";
   const settP=$("settings-panel");if(settP)settP.style.display=tab==="settings"?"flex":"none";
 
-  if(tab==="calls")renderCallLog();
-  if(tab==="status")renderStatus();
-  if(tab==="settings")renderSettings();
+  if(tab==="calls"){renderCallLog();}
+  if(tab==="status"){renderStatus();loadContactsStatuses();}
+  if(tab==="settings"){renderSettings();}
 }
 
 // ══ CALL LOG ══
@@ -1221,97 +1265,290 @@ function closeLogoutModal(){$("logout-modal").style.display="none";}
 // ══ STATUS ══
 let myStatus="";
 let contactsStatuses=[];
-
-let _statusType="text",_statusPhotoData=null;
+let _statusType="text";
+let _statusPhotoData=null;
+let _statusVideoFile=null;
+let _statusAudioBlob=null;
+let _statusAudioRec=null;
+let _statusAudioTimer=null;
+let _statusAudioSecs=0;
+let _svTimer=null;
 
 function openAddStatus(){
-  _statusType="text";_statusPhotoData=null;
+  _statusType="text";
+  _statusPhotoData=null;
+  _statusVideoFile=null;
+  _statusAudioBlob=null;
   const inp=$("status-inp");if(inp)inp.value=myStatus||"";
+  const ap=$("status-audio-preview");if(ap){ap.style.display="none";ap.src="";}
+  const at=$("status-audio-timer");if(at)at.style.display="none";
+  const ab=$("status-audio-btn");if(ab)ab.textContent="🎤";
+  const ast=$("status-audio-status");if(ast)ast.textContent="Appuie pour enregistrer";
   setStatusType("text");
   $("status-modal").style.display="flex";
-  setTimeout(()=>{if(inp&&_statusType==="text")inp.focus();},300);
+  setTimeout(()=>{const i=$("status-inp");if(i)i.focus();},300);
 }
-function closeStatusModal(){$("status-modal").style.display="none";_statusPhotoData=null;}
+function closeStatusModal(){
+  $("status-modal").style.display="none";
+  // Stop any audio recording
+  if(_statusAudioRec&&_statusAudioRec.state!=="inactive"){
+    try{_statusAudioRec.stop();}catch(e){}
+  }
+  clearInterval(_statusAudioTimer);
+  _statusAudioRec=null;_statusAudioBlob=null;
+}
 
 function setStatusType(type){
   _statusType=type;
-  $("status-text-section").style.display=type==="text"?"block":"none";
-  $("status-photo-section").style.display=type==="photo"?"block":"none";
-  const tb=$("stype-text"),pb=$("stype-photo");
-  if(tb&&pb){
-    tb.style.borderColor=type==="text"?"#25d366":"#e9edef";
-    tb.style.background=type==="text"?"#f0fdf4":"#fff";
-    tb.style.color=type==="text"?"#15803d":"#667781";
-    pb.style.borderColor=type==="photo"?"#25d366":"#e9edef";
-    pb.style.background=type==="photo"?"#f0fdf4":"#fff";
-    pb.style.color=type==="photo"?"#15803d":"#667781";
-  }
+  ["text","photo","video","audio"].forEach(t=>{
+    const btn=$("stype-"+t);
+    if(btn){
+      const active=t===type;
+      btn.style.borderColor=active?"#25d366":"#e9edef";
+      btn.style.background=active?"#f0fdf4":"#fff";
+      btn.style.color=active?"#15803d":"#667781";
+    }
+    const sec=$("status-"+t+"-section");
+    if(sec)sec.style.display=active?"block":"none";
+  });
 }
 
 function previewStatusPhoto(input){
   if(!input.files||!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  const r=new FileReader();
+  r.onload=e=>{
     _statusPhotoData=e.target.result;
     const img=$("status-photo-img"),ph=$("status-photo-placeholder");
     if(img){img.src=_statusPhotoData;img.style.display="block";}
     if(ph)ph.style.display="none";
   };
-  reader.readAsDataURL(input.files[0]);
+  r.readAsDataURL(input.files[0]);
+}
+
+function previewStatusVideo(input){
+  if(!input.files||!input.files[0])return;
+  _statusVideoFile=input.files[0];
+  const url=URL.createObjectURL(_statusVideoFile);
+  const vid=$("status-video-el"),ph=$("status-video-placeholder");
+  if(vid){vid.src=url;vid.style.display="block";}
+  if(ph)ph.style.display="none";
+}
+
+function toggleStatusAudio(){
+  if(_statusAudioRec&&_statusAudioRec.state==="recording"){
+    // Stop recording
+    _statusAudioRec.stop();
+    clearInterval(_statusAudioTimer);
+    const btn=$("status-audio-btn");if(btn)btn.textContent="🎤";
+    const ast=$("status-audio-status");if(ast)ast.textContent="Enregistrement terminé";
+    const at=$("status-audio-timer");if(at)at.style.display="none";
+  } else {
+    // Start recording
+    if(!navigator.mediaDevices){showToast("❌ Micro non supporté");return;}
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+      const chunks=[];
+      const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
+      try{_statusAudioRec=new MediaRecorder(stream,{mimeType:mime});}
+      catch(e){_statusAudioRec=new MediaRecorder(stream);}
+      _statusAudioRec.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data);};
+      _statusAudioRec.onstop=()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        _statusAudioBlob=new Blob(chunks,{type:_statusAudioRec.mimeType||"audio/webm"});
+        const url=URL.createObjectURL(_statusAudioBlob);
+        const ap=$("status-audio-preview");
+        if(ap){ap.src=url;ap.style.display="block";}
+        const ast=$("status-audio-status");if(ast)ast.textContent="Écoute avant de publier";
+      };
+      _statusAudioRec.start(200);
+      _statusAudioSecs=0;
+      const at=$("status-audio-timer");if(at)at.style.display="block";
+      const btn=$("status-audio-btn");if(btn)btn.textContent="⏹️";
+      const ast=$("status-audio-status");if(ast)ast.textContent="🔴 Enregistrement...";
+      _statusAudioTimer=setInterval(()=>{
+        _statusAudioSecs++;
+        const m=Math.floor(_statusAudioSecs/60),s=(_statusAudioSecs%60).toString().padStart(2,"0");
+        if(at)at.textContent=m+":"+s;
+        if(_statusAudioSecs>=60){
+          // Max 60 seconds
+          if(_statusAudioRec&&_statusAudioRec.state==="recording")_statusAudioRec.stop();
+          clearInterval(_statusAudioTimer);
+        }
+      },1000);
+    }).catch(e=>showToast("❌ Micro refusé: "+e.name));
+  }
 }
 
 async function saveStatus(){
+  const c=document.getElementById("status-"+_statusType+"-caption");
+  const caption=(c&&c.value)||"";
+
   if(_statusType==="text"){
-    const inp=$("status-inp");
-    const text=(inp?inp.value:"").trim();
-    myStatus=text;
-    localStorage.setItem("bstatus_"+myId(),text);
-    if(window._firebaseReady&&myEmail){
-      window._set(getFB("statuses/"+myId()),{
-        type:"text",email:myEmail,text,ts:Date.now(),color:myColor,pic:picData||"",views:[],viewCount:0
-      });
-    }
-    closeStatusModal();renderStatus();renderSettings();
-    showToast(text?"✅ Statut texte publié !":"✅ Statut effacé");
+    const text=($("status-inp")&&$("status-inp").value.trim())||"";
+    if(!text){showToast("❌ Écris quelque chose");return;}
+    await _publishStatus({type:"text",text,caption:text,url:"",ts:Date.now()});
+
   }else if(_statusType==="photo"){
     if(!_statusPhotoData){showToast("❌ Choisissez une photo");return;}
-    const caption=($("status-photo-caption")&&$("status-photo-caption").value)||"";
-    if(window._firebaseReady&&myEmail){
-      window._set(getFB("statuses/"+myId()),{
-        type:"photo",email:myEmail,photoData:_statusPhotoData,
-        text:caption,ts:Date.now(),color:myColor,pic:picData||"",views:[],viewCount:0
-      });
-    }
-    myStatus=caption||"📷 Photo";
-    localStorage.setItem("bstatus_"+myId(),myStatus);
-    closeStatusModal();renderStatus();renderSettings();
-    showToast("✅ Statut photo publié !");
+    showToast("⏳ Publication...");
+    await _publishStatus({type:"photo",text:caption||"📷 Photo",caption,url:_statusPhotoData,ts:Date.now()});
+
+  }else if(_statusType==="video"){
+    if(!_statusVideoFile){showToast("❌ Choisissez une vidéo");return;}
+    showToast("⏳ Upload vidéo...");
+    const url=await uploadFile(_statusVideoFile,"statuses/videos");
+    if(!url)return;
+    await _publishStatus({type:"video",text:caption||"🎬 Vidéo",caption,url,ts:Date.now()});
+
+  }else if(_statusType==="audio"){
+    if(!_statusAudioBlob){showToast("❌ Enregistre d'abord un audio");return;}
+    showToast("⏳ Publication...");
+    const reader=new FileReader();
+    reader.onloadend=async()=>{
+      await _publishStatus({type:"audio",text:caption||"🎤 Audio",caption,url:reader.result,ts:Date.now()});
+    };
+    reader.readAsDataURL(_statusAudioBlob);
+    return;
   }
+
+  closeStatusModal();
+}
+
+async function _publishStatus(data){
+  const statusData={
+    ...data,
+    email:myEmail,
+    color:myColor,
+    pic:picData||"",
+    views:[],
+    viewCount:0,
+    ts:data.ts||Date.now()
+  };
+  myStatus=data.text||data.caption||"";
+  localStorage.setItem("bstatus_"+myId(),myStatus);
+
+  if(window._firebaseReady){
+    await window._set(getFB("statuses/"+myId()),statusData);
+  }
+  closeStatusModal();
+  renderStatus();renderSettings();
+  showToast("✅ Statut publié !");
 }
 
 function renderStatus(){
-  const myLine=$("my-status-text");if(myLine)myLine.textContent=myStatus||"Appuie pour ajouter un statut";
+  // My status
+  const myLine=$("my-status-text");
+  if(myLine)myLine.textContent=myStatus||"Appuie pour ajouter un statut";
   const myAv=$("my-status-av");
   if(myAv){
-    if(picData)myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>`;
-    else{myAv.style.background=myColor;myAv.innerHTML=myEmail.slice(0,2).toUpperCase()+'<div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#25d366;">➕</div>';}
+    if(picData){
+      myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/>`+
+        `<div style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#25d366;border:2px solid #fff;">➕</div>`;
+    }else{
+      myAv.style.background=myColor;
+      myAv.innerHTML=myEmail.slice(0,2).toUpperCase()+
+        `<div style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#25d366;border:2px solid #fff;">➕</div>`;
+    }
   }
+
   // Contacts statuses
   const list=$("contacts-status-list");if(!list)return;
   list.innerHTML="";
-  if(!contactsStatuses.length){
-    list.innerHTML='<div style="padding:20px 16px;font-size:13px;color:#8696a0;">Les statuts de vos contacts apparaitront ici.</div>';
+  const active=contactsStatuses.filter(s=>Date.now()-s.ts<86400000);
+  if(!active.length){
+    list.innerHTML='<div style="padding:24px 16px;font-size:13px;color:#8696a0;text-align:center;">Aucun statut récent de vos contacts</div>';
     return;
   }
-  contactsStatuses.forEach(s=>{
-    const c=myContacts.find(x=>x.email===s.email)||{name:s.email,color:s.color||"#8696a0",ini:(s.email||"?").substring(0,2).toUpperCase(),pic:s.pic||""};
-    const div=document.createElement("div");div.className="call-log-item";
+  active.forEach(s=>{
+    const cObj=myContacts.find(x=>x.email===s.email)||{name:s.email,color:s.color||"#8696a0",ini:(s.email||"?").substring(0,2).toUpperCase(),pic:s.pic||"",customName:""};
     const ago=timeSince(s.ts);
-    const avHtml=c.pic?`<img src="${c.pic}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:3px solid #25d366;"/>`:
-      `<div style="width:44px;height:44px;border-radius:50%;background:${c.color||"#8696a0"};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;border:3px solid #25d366;">${c.ini||"?"}</div>`;
-    div.innerHTML=`${avHtml}<div class="cli-info"><div class="cli-name">${esc(dispName(c))}</div><div class="cli-detail">${esc(s.text||"")}</div></div><div class="cli-time">${ago}</div>`;
+    const typeIcon=s.type==="photo"?"📷":s.type==="video"?"🎬":s.type==="audio"?"🎤":"💬";
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f2f5;cursor:pointer;";
+    div.onclick=()=>openStatusViewer(s,cObj);
+    const avInner=cObj.pic?`<img src="${cObj.pic}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;display:block;"/>`:
+      `<div style="width:50px;height:50px;border-radius:50%;background:${cObj.color||"#25d366"};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;">${cObj.ini||"?"}</div>`;
+    div.innerHTML=`<div style="position:relative;flex-shrink:0;"><div style="padding:2px;border-radius:50%;background:linear-gradient(135deg,#25d366,#128c7e);">${avInner}</div></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;color:#111b21;">${esc(dispName(cObj))}</div>
+        <div style="font-size:12px;color:#667781;margin-top:2px;">${typeIcon} ${ago}</div>
+      </div>`;
     list.appendChild(div);
   });
+}
+
+// ── STATUS VIEWER ────────────────────────────────────────────────────────────
+function openStatusViewer(s,c){
+  // Register view
+  if(window._firebaseReady&&s.email!==myEmail){
+    const sid=toId(s.email);
+    const views=Array.isArray(s.views)?[...s.views]:[];
+    if(!views.includes(myEmail)){
+      views.push(myEmail);
+      window._update(getFB("statuses/"+sid),{views,viewCount:views.length});
+    }
+  }
+  const viewer=$("status-viewer");if(!viewer)return;
+  viewer.style.display="flex";
+
+  // Avatar
+  const av=$("sv-av");
+  if(av){av.style.background=c.color||"#25d366";av.innerHTML=c.pic?`<img src="${c.pic}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"/>`:c.ini||"?";}
+  $("sv-name").textContent=dispName(c);
+  $("sv-time").textContent=timeSince(s.ts);
+
+  // Content
+  $("sv-img").style.display="none";
+  $("sv-vid").style.display="none";$("sv-vid").src="";
+  $("sv-aud").style.display="none";$("sv-aud").src="";
+  $("sv-text-display").style.display="none";
+  $("sv-caption").textContent=s.caption||s.text||"";
+
+  if(s.type==="photo"&&s.url){
+    const img=$("sv-img");img.src=s.url;img.style.display="block";
+  }else if(s.type==="video"&&s.url){
+    const vid=$("sv-vid");vid.src=s.url;vid.style.display="block";vid.play().catch(()=>{});
+  }else if(s.type==="audio"&&s.url){
+    const aud=$("sv-aud");aud.src=s.url;aud.style.display="block";aud.play().catch(()=>{});
+  }else{
+    const td=$("sv-text-display");td.textContent=s.text||"";td.style.display="flex";
+    td.style.cssText="display:flex;align-items:center;justify-content:center;padding:30px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.5;";
+  }
+
+  // Views
+  const views=Array.isArray(s.views)?s.views:[];
+  $("sv-view-count").textContent=s.viewCount||views.length;
+  const vl=$("sv-viewers-list");
+  if(vl&&views.length)vl.textContent="Vus par: "+views.map(v=>v.split("@")[0]).join(", ");
+
+  // Progress bar (5 sec for text/audio, 0 for video)
+  const dur=(s.type==="text"||s.type==="audio")?5000:0;
+  const prog=$("sv-progress");if(prog)prog.style.width="0%";
+  if(dur>0&&prog){
+    const start=Date.now();
+    clearInterval(_svTimer);
+    _svTimer=setInterval(()=>{
+      const pct=Math.min(100,(Date.now()-start)/dur*100);
+      prog.style.width=pct+"%";
+      prog.style.transition="none";
+      if(pct>=100){clearInterval(_svTimer);closeStatusViewer();}
+    },50);
+  }
+}
+
+function closeStatusViewer(){
+  clearInterval(_svTimer);
+  const viewer=$("status-viewer");if(viewer)viewer.style.display="none";
+  const vid=$("sv-vid");if(vid){vid.pause();vid.src="";}
+  const aud=$("sv-aud");if(aud){aud.pause();aud.src="";}
+}
+
+function viewMyStatus(){
+  if(!window._firebaseReady){showToast("❌ Non disponible");return;}
+  window._onValue(getFB("statuses/"+myId()),snap=>{
+    const d=snap.val();if(!d){openAddStatus();return;}
+    const me={name:myEmail,email:myEmail,color:myColor,ini:myEmail.substring(0,2).toUpperCase(),pic:picData||"",customName:""};
+    openStatusViewer({...d,views:d.views||[]},me);
+  },{onlyOnce:true});
 }
 
 function loadContactsStatuses(){
@@ -1329,7 +1566,7 @@ function loadContactsStatuses(){
 
 function timeSince(ts){
   const s=Math.floor((Date.now()-ts)/1000);
-  if(s<60)return "À l'instant";
+  if(s<60)return"À l'instant";
   if(s<3600)return Math.floor(s/60)+"min";
   if(s<86400)return Math.floor(s/3600)+"h";
   return Math.floor(s/86400)+"j";
@@ -2412,6 +2649,8 @@ window.addEventListener("popstate",e=>{
     closeChatMenu();
   }else if($("media-picker")&&$("media-picker").classList.contains("show")){
     closeMediaPicker();
+  }else if($("status-viewer")&&$("status-viewer").style.display==="flex"){
+    closeStatusViewer();
   }else if($("call-screen")&&$("call-screen").style.display==="flex"){
     // Ne pas fermer l'appel avec retour
   }else if(activeId){
