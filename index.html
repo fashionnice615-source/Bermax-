@@ -877,7 +877,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="4.1.0";
+const APP_VERSION="4.1.1";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1067,6 +1067,28 @@ function subToPresence(c){
   });
 }
 
+// Synchronise en direct la photo de profil et le nom du contact
+function subToProfile(c){
+  if(!window._firebaseReady)return;
+  window._onValue(getFB("users/"+c.id+"/profile"),snap=>{
+    const d=snap.val();if(!d)return;
+    let changed=false;
+    if(d.pic!==undefined&&d.pic!==c.pic){c.pic=d.pic;changed=true;}
+    if(d.color&&d.color!==c.color){c.color=d.color;changed=true;}
+    if(changed){
+      // Mettre à jour aussi dans myContacts
+      const mc=myContacts.find(x=>x.id===c.id);
+      if(mc){mc.pic=d.pic;if(d.color)mc.color=d.color;}
+      renderChats();renderContacts();
+      if(activeId===c.id){
+        const hav=$("hav");
+        if(hav){hav.style.background=c.color;hav.innerHTML=(c.pic?`<img src="${c.pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`:c.ini||"?")+(c.status==="En ligne"?'<div class="dot"></div>':"");}
+      }
+      saveCache();
+    }
+  });
+}
+
 function subToReadStatus(c){
   if(!window._firebaseReady)return;
   window._onValue(getFB("users/"+c.id+"/readStatus/"+myId()),snap=>{
@@ -1114,7 +1136,7 @@ function markRead(c){
   window._set(getFB("users/"+myId()+"/readStatus/"+c.id),Date.now());
 }
 
-function subAll(c){subToChat(c);subToPresence(c);subToReadStatus(c);subToCalls(c);}
+function subAll(c){subToChat(c);subToPresence(c);subToReadStatus(c);subToCalls(c);subToProfile(c);}
 
 // Charger contacts Firebase
 function loadContactsFB(){
@@ -1454,6 +1476,15 @@ function deleteCurrentStatus(){
 
 // ── CHARGEMENT MES STATUTS ───────────────────────────────────────────────
 function loadMyStatuses(){
+  // Affichage instantané depuis le cache local pendant le chargement Firebase
+  try{
+    const cached=localStorage.getItem("bms_"+myId());
+    if(cached){
+      const list=JSON.parse(cached).filter(v=>v.ts&&Date.now()-v.ts<86400000);
+      if(list.length){myStatuses=list;renderMyStatusRow();}
+    }
+  }catch(e){}
+
   if(!window._firebaseReady||!myEmail)return;
   window._onValue(getFB("statuses/"+myId()),snap=>{
     const list=[];
@@ -1462,6 +1493,7 @@ function loadMyStatuses(){
       if(v&&v.ts&&Date.now()-v.ts<86400000)list.push({...v,id:ch.key});
     });
     myStatuses=list.sort((a,b)=>a.ts-b.ts);
+    try{localStorage.setItem("bms_"+myId(),JSON.stringify(myStatuses));}catch(e){}
     renderMyStatusRow();
   });
 }
@@ -2671,7 +2703,29 @@ function hideCallUI(){hideCallScreen();}
 
 // ══ LOGIN ══
 function previewPic(input){if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{picData=e.target.result;$("avprev").src=picData;$("avprev").style.display="block";$("avph").style.display="none";};r.readAsDataURL(input.files[0]);}
-function changeMyPic(input){if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{picData=e.target.result;const av=$("myav");av.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;};r.readAsDataURL(input.files[0]);}
+function changeMyPic(input){
+  if(!input.files||!input.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{
+    picData=e.target.result;
+    const av=$("myav");
+    if(av)av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
+    // Persister localement
+    try{localStorage.setItem("bp",picData);}catch(err){console.warn("Photo trop lourde pour localStorage");}
+    // Persister dans Firebase pour que les contacts la voient
+    if(window._firebaseReady&&myEmail){
+      window._set(getFB("users/"+myId()+"/profile"),{email:myEmail,pic:picData,color:myColor,lastSeen:Date.now()});
+      // Mettre à jour la copie de mon profil chez chacun de mes contacts
+      myContacts.forEach(c=>{
+        window._set(getFB("users/"+c.id+"/contacts/"+myId()+"/pic"),picData);
+      });
+    }
+    renderStatus&&renderMyStatusRow&&renderMyStatusRow();
+    renderSettings&&renderSettings();
+    showToast("✅ Photo de profil mise à jour !");
+  };
+  r.readAsDataURL(input.files[0]);
+}
 async function reqCode(){
   const email=$("email-inp").value.trim();
   if(!email||!isEmail(email)){$("ph-err").classList.add("show");return;}
