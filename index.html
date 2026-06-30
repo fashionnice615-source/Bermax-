@@ -877,7 +877,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="4.1.1";
+const APP_VERSION="4.2.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -912,8 +912,8 @@ function getChatId(emailA,emailB){
   const b=(emailB||"").replace(/[^a-zA-Z0-9]/g,"_");
   return [a,b].sort().join("_");
 }
-function myId(){return myEmail.replace(/[^a-zA-Z0-9]/g,"_");}
-function toId(email){return(email||"").replace(/[^a-zA-Z0-9]/g,"_");}
+function myId(){return(myEmail||"").toLowerCase().replace(/[^a-zA-Z0-9]/g,"_");}
+function toId(email){return(email||"").toLowerCase().replace(/[^a-zA-Z0-9]/g,"_");}
 function dispName(c){return(c&&c.customName&&c.customName.trim())?c.customName.trim():(c&&(c.name||c.email))||"?";}
 function isEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);}
 function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
@@ -922,6 +922,24 @@ function scrollBot(){const b=document.getElementById("messages");if(b)b.scrollTo
 function $(id){return document.getElementById(id);}
 function showToast(msg,dur=3000){const t=$("toast");if(!t)return;t.textContent=msg;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),dur);}
 function getFB(path){return window._ref(window._db,path);}
+
+// Compresse une image (réduit taille/poids) pour éviter les échecs d'écriture Firebase
+function compressImage(dataUrl,maxDim=400,quality=0.7){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+      else if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+      const canvas=document.createElement("canvas");
+      canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL("image/jpeg",quality));
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
 
 // ══ EMAILJS ══
 function initEJS(){
@@ -1880,19 +1898,39 @@ function openAddContact(){
 function closeAdd(){$("add-modal").classList.remove("show");}
 
 async function searchUser(){
-  const email=$("nc-email").value.trim();
+  const email=$("nc-email").value.trim().toLowerCase();
   if(!email||!isEmail(email)){$("nc-err").classList.add("show");return;}
   $("nc-err").classList.remove("show");
-  if(email.toLowerCase()===myEmail.toLowerCase()){showResult("❌ Vous ne pouvez pas vous ajouter","err");return;}
-  if(!window._firebaseReady){showToast("❌ Firebase non disponible");return;}
+  if(email===myEmail.toLowerCase()){showResult("❌ Vous ne pouvez pas vous ajouter","err");return;}
+  if(!window._firebaseReady){showToast("❌ Connexion au serveur indisponible");return;}
+
+  showResult("⏳ Recherche en cours...","ok");
   const sid=toId(email);
-  const get=path=>new Promise(r=>window._onValue(getFB(path),s=>{r(s.val());},{onlyOnce:true}));
-  let data=await get("users/"+sid+"/profile");
-  if(!data||!data.email)data=await get("users/"+sid);
-  if(data&&(data.email||data.phone)){
-    showResult("✅ Utilisateur trouvé !","ok");
-    addContactLocal(email,data);
-  }else{showResult("❌ Aucun utilisateur trouvé","err");}
+
+  // Timeout de sécurité : si Firebase ne répond pas en 8s, on affiche une erreur claire
+  const withTimeout=(promise,ms)=>Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))
+  ]);
+  const get=path=>new Promise(r=>{
+    try{
+      window._onValue(getFB(path),s=>{r(s.val());},{onlyOnce:true});
+    }catch(e){console.error("searchUser get error:",e);r(null);}
+  });
+
+  try{
+    let data=await withTimeout(get("users/"+sid+"/profile"),8000);
+    if(!data||!data.email)data=await withTimeout(get("users/"+sid),8000);
+    if(data&&(data.email||data.phone)){
+      showResult("✅ Utilisateur trouvé !","ok");
+      addContactLocal(email,data);
+    }else{
+      showResult("❌ Aucun utilisateur trouvé avec cet e-mail","err");
+    }
+  }catch(e){
+    console.error("searchUser error:",e);
+    showResult("❌ Erreur réseau, réessaie","err");
+  }
 }
 function showResult(msg,type){
   const r=$("nc-result");r.style.display="block";r.style.padding="10px";r.style.borderRadius="10px";
@@ -2702,32 +2740,48 @@ function hideCallUI(){hideCallScreen();}
 
 
 // ══ LOGIN ══
-function previewPic(input){if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{picData=e.target.result;$("avprev").src=picData;$("avprev").style.display="block";$("avph").style.display="none";};r.readAsDataURL(input.files[0]);}
-function changeMyPic(input){
+function previewPic(input){
   if(!input.files||!input.files[0])return;
   const r=new FileReader();
-  r.onload=e=>{
-    picData=e.target.result;
+  r.onload=async e=>{
+    picData=await compressImage(e.target.result,400,0.7);
+    $("avprev").src=picData;$("avprev").style.display="block";$("avph").style.display="none";
+  };
+  r.readAsDataURL(input.files[0]);
+}
+async function changeMyPic(input){
+  if(!input.files||!input.files[0])return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    showToast("⏳ Mise à jour de la photo...");
+    // Compresser pour éviter les échecs d'écriture Firebase (payload trop gros)
+    const compressed=await compressImage(e.target.result,400,0.7);
+    picData=compressed;
     const av=$("myav");
     if(av)av.innerHTML=`<img src="${picData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
-    // Persister localement
-    try{localStorage.setItem("bp",picData);}catch(err){console.warn("Photo trop lourde pour localStorage");}
-    // Persister dans Firebase pour que les contacts la voient
+    try{localStorage.setItem("bp",picData);}catch(err){console.warn("localStorage plein:",err);}
+
     if(window._firebaseReady&&myEmail){
-      window._set(getFB("users/"+myId()+"/profile"),{email:myEmail,pic:picData,color:myColor,lastSeen:Date.now()});
-      // Mettre à jour la copie de mon profil chez chacun de mes contacts
-      myContacts.forEach(c=>{
-        window._set(getFB("users/"+c.id+"/contacts/"+myId()+"/pic"),picData);
-      });
+      try{
+        await window._set(getFB("users/"+myId()+"/profile"),{email:myEmail,pic:picData,color:myColor,lastSeen:Date.now()});
+        // Mettre à jour la copie chez chacun de mes contacts
+        myContacts.forEach(c=>{
+          window._set(getFB("users/"+c.id+"/contacts/"+myId()+"/pic"),picData).catch(err=>console.warn("Sync pic contact:",err));
+        });
+        showToast("✅ Photo de profil mise à jour !");
+      }catch(err){
+        showToast("❌ Erreur sauvegarde photo: "+(err.message||"inconnue"));
+        console.error("changeMyPic Firebase error:",err);
+      }
+    }else{
+      showToast("⚠️ Photo changée localement (hors-ligne)");
     }
-    renderStatus&&renderMyStatusRow&&renderMyStatusRow();
-    renderSettings&&renderSettings();
-    showToast("✅ Photo de profil mise à jour !");
+    renderMyStatusRow();renderSettings();
   };
   r.readAsDataURL(input.files[0]);
 }
 async function reqCode(){
-  const email=$("email-inp").value.trim();
+  const email=$("email-inp").value.trim().toLowerCase();
   if(!email||!isEmail(email)){$("ph-err").classList.add("show");return;}
   $("ph-err").classList.remove("show");
   pendEmail=email;smsCode=Math.floor(100000+Math.random()*900000).toString();
@@ -2768,7 +2822,7 @@ async function resendCode(){
 }
 function backLogin(){clearInterval(cdTimer);smsCode="";$("cpanel").classList.remove("show");$("ppanel").style.display="flex";$("req-btn").textContent="Recevoir le code →";$("req-btn").disabled=false;}
 function loginOk(){
-  myEmail=$("email-inp").value.trim();
+  myEmail=$("email-inp").value.trim().toLowerCase();
   showToast("✅ Connecté !");applyAvatar();
   localStorage.setItem("be",myEmail);localStorage.setItem("bc",myColor);if(picData)localStorage.setItem("bp",picData);
   myStatus=localStorage.getItem("bstatus_"+myId())||"";
