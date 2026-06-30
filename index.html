@@ -326,7 +326,6 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 
   <!-- STATUS PANEL -->
   <div id="status-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-    <!-- Header -->
     <div style="padding:12px 16px;background:#25d366;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <span style="font-size:16px;font-weight:800;color:#fff;">⭕ Statuts</span>
       <button onclick="openAddStatus()" style="background:rgba(255,255,255,.2);border:none;border-radius:20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;padding:6px 14px;">+ Ajouter</button>
@@ -336,26 +335,29 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
       <!-- MON STATUT -->
       <div style="background:#fff;margin-bottom:8px;">
         <div style="padding:6px 16px 4px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;">Mon statut</div>
-        <div id="my-status-row" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;" onclick="myStatus?viewMyStatus():openAddStatus()">
-          <div style="position:relative;flex-shrink:0;">
-            <div id="my-status-av" style="width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;overflow:hidden;position:relative;">M</div>
-            <div style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#25d366;border-radius:50%;border:2px solid #f0f2f5;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">➕</div>
+        <div id="my-status-row" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;" onclick="myStatuses.length?viewMyStatus():openAddStatus()">
+          <div style="position:relative;flex-shrink:0;width:54px;height:54px;">
+            <svg id="my-status-ring" width="54" height="54" style="position:absolute;top:0;left:0;transform:rotate(-90deg);"></svg>
+            <div id="my-status-av" style="position:absolute;top:3px;left:3px;width:48px;height:48px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;overflow:hidden;">M</div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;background:#25d366;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">➕</div>
           </div>
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:700;color:#111b21;">Mon statut</div>
             <div id="my-status-text" style="font-size:12px;color:#667781;margin-top:2px;">Appuie pour ajouter</div>
           </div>
-          <div id="my-status-actions" style="display:none;gap:8px;">
-            <button onclick="event.stopPropagation();viewMyStatus()" style="background:#25d366;border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:14px;cursor:pointer;">👁</button>
-            <button onclick="event.stopPropagation();deleteMyStatus()" style="background:#ef4444;border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:16px;cursor:pointer;">🗑</button>
-          </div>
         </div>
       </div>
 
-      <!-- STATUTS CONTACTS -->
-      <div style="background:#fff;">
-        <div style="padding:6px 16px 4px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;">Récentes (24h)</div>
-        <div id="contacts-status-list"></div>
+      <!-- RÉCENTES (non vues) -->
+      <div id="status-recent-block" style="background:#fff;margin-bottom:8px;">
+        <div style="padding:6px 16px 4px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;">Récentes</div>
+        <div id="status-recent-list"></div>
+      </div>
+
+      <!-- VUES -->
+      <div id="status-viewed-block" style="background:#fff;display:none;">
+        <div style="padding:6px 16px 4px;font-size:11px;font-weight:700;color:#667781;text-transform:uppercase;letter-spacing:.5px;">Vues</div>
+        <div id="status-viewed-list"></div>
       </div>
 
     </div>
@@ -777,28 +779,32 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 
 
 <div id="status-viewer" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:99999;flex-direction:column;">
-  <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:10px 10px 0;">
-    <div style="height:3px;background:rgba(255,255,255,.3);border-radius:2px;">
-      <div id="sv-progress" style="height:100%;background:#fff;border-radius:2px;width:0%;"></div>
-    </div>
-  </div>
-  <div style="position:absolute;top:18px;left:0;right:0;z-index:2;padding:0 14px;display:flex;align-items:center;gap:10px;">
+  <!-- Segmented progress bars -->
+  <div id="sv-progress-row" style="position:absolute;top:0;left:0;right:0;z-index:3;padding:10px 10px 0;display:flex;gap:4px;"></div>
+  <!-- Header -->
+  <div style="position:absolute;top:18px;left:0;right:0;z-index:3;padding:0 14px;display:flex;align-items:center;gap:10px;">
     <div id="sv-av" style="width:40px;height:40px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;"></div>
     <div style="flex:1;">
       <div id="sv-name" style="font-size:14px;font-weight:700;color:#fff;"></div>
       <div id="sv-time" style="font-size:12px;color:rgba(255,255,255,.7);"></div>
     </div>
+    <button id="sv-delete-btn" onclick="deleteCurrentStatus()" style="display:none;background:rgba(0,0,0,.3);border:none;color:#fff;font-size:18px;cursor:pointer;width:36px;height:36px;border-radius:50%;align-items:center;justify-content:center;margin-right:6px;">🗑</button>
     <button onclick="closeStatusViewer()" style="background:rgba(0,0,0,.3);border:none;color:#fff;font-size:20px;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>
   </div>
-  <div id="sv-content" style="flex:1;display:flex;align-items:center;justify-content:center;margin-top:60px;margin-bottom:100px;">
+  <!-- Tap zones for navigation -->
+  <div onclick="svPrev()" style="position:absolute;top:0;left:0;width:35%;height:100%;z-index:2;"></div>
+  <div onclick="svNext()" style="position:absolute;top:0;right:0;width:35%;height:100%;z-index:2;"></div>
+  <!-- Content -->
+  <div id="sv-content" style="flex:1;display:flex;align-items:center;justify-content:center;margin-top:60px;margin-bottom:100px;position:relative;z-index:1;">
     <img id="sv-img" style="display:none;max-width:100%;max-height:100%;object-fit:contain;" alt=""/>
-    <video id="sv-vid" style="display:none;max-width:100%;max-height:100%;" playsinline controls></video>
+    <video id="sv-vid" style="display:none;max-width:100%;max-height:100%;" playsinline></video>
     <audio id="sv-aud" style="display:none;width:90%;margin:auto;" controls></audio>
-    <div id="sv-text-display" style="display:none;padding:30px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.5;"></div>
+    <div id="sv-text-display" style="display:none;"></div>
   </div>
-  <div style="position:absolute;bottom:0;left:0;right:0;z-index:2;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:20px 16px 36px;">
+  <!-- Caption + Views -->
+  <div style="position:absolute;bottom:0;left:0;right:0;z-index:3;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:20px 16px 36px;">
     <div id="sv-caption" style="font-size:15px;color:#fff;margin-bottom:10px;font-weight:500;"></div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.8);">👁 <span id="sv-view-count">0</span> vue(s)</div>
+    <div id="sv-views-row" style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,.8);cursor:pointer;">👁 <span id="sv-view-count">0</span> vue(s)</div>
     <div id="sv-viewers-list" style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;"></div>
   </div>
 </div>
@@ -871,7 +877,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="4.0.0";
+const APP_VERSION="4.1.0";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1246,7 +1252,7 @@ function switchNav(tab){
   const settP=$("settings-panel");if(settP)settP.style.display=tab==="settings"?"flex":"none";
 
   if(tab==="calls"){renderCallLog();}
-  if(tab==="status"){renderStatus();loadContactsStatuses();}
+  if(tab==="status"){renderMyStatusRow();renderContactsStatusLists();}
   if(tab==="settings"){renderSettings();}
 }
 
@@ -1283,10 +1289,9 @@ function renderCallLog(){
 function confirmLogout(){$("logout-modal").style.display="flex";}
 function closeLogoutModal(){$("logout-modal").style.display="none";}
 
-// ══ STATUS ══
-let myStatus="";
-let myStatusData=null; // full status object
-let contactsStatuses=[];
+// ══ STATUS (architecture WhatsApp: plusieurs statuts par contact, type stories) ══
+let myStatuses=[];              // mes statuts actifs (array)
+let contactsStatusGroups=[];    // [{email,c,statuses:[...],allViewed}]
 let _statusType="text";
 let _statusPhotoData=null;
 let _statusVideoFile=null;
@@ -1294,15 +1299,20 @@ let _statusAudioBlob=null;
 let _statusAudioRec=null;
 let _statusAudioTimer=null;
 let _statusAudioSecs=0;
-let _svTimer=null;
 
-// Open status editor
+// Player state
+let _svGroup=null;     // {email,c,statuses}
+let _svIndex=0;        // index dans le groupe courant
+let _svGroupList=[];   // liste des groupes à parcourir (pour swipe auto vers contact suivant)
+let _svGroupIdx=0;
+let _svTimer=null;
+let _svStart=0;
+let _svDuration=5000;
+let _svPaused=false;
+
+// ── ÉDITEUR ──────────────────────────────────────────────────────────────
 function openAddStatus(){
-  _statusType="text";
-  _statusPhotoData=null;
-  _statusVideoFile=null;
-  _statusAudioBlob=null;
-  // Reset fields
+  _statusType="text";_statusPhotoData=null;_statusVideoFile=null;_statusAudioBlob=null;
   const inp=$("status-inp");if(inp)inp.value="";
   const ap=$("status-audio-preview");if(ap){ap.style.display="none";ap.src="";}
   const at=$("status-audio-timer");if(at)at.style.display="none";
@@ -1313,12 +1323,9 @@ function openAddStatus(){
   const vel=$("status-video-el");if(vel){vel.src="";vel.style.display="none";}
   const vph=$("status-video-placeholder");if(vph)vph.style.display="block";
   ["photo","video","audio"].forEach(t=>{const c=document.getElementById("status-"+t+"-caption");if(c)c.value="";});
-  // Show editor
-  const ed=$("status-editor");
-  if(ed)ed.style.display="flex";
+  const ed=$("status-editor");if(ed)ed.style.display="flex";
   setStatusType("text");
 }
-
 function closeStatusEditor(){
   const ed=$("status-editor");if(ed)ed.style.display="none";
   if(_statusAudioRec&&_statusAudioRec.state!=="inactive"){try{_statusAudioRec.stop();}catch(e){}}
@@ -1330,12 +1337,8 @@ function setStatusType(type){
   _statusType=type;
   ["text","photo","video","audio"].forEach(t=>{
     const btn=$("stype-"+t);
-    if(btn){
-      btn.style.color=t===type?"#25d366":"#8696a0";
-      btn.style.borderBottom=t===type?"3px solid #25d366":"3px solid transparent";
-    }
-    const sec=$("status-"+t+"-section");
-    if(sec)sec.style.display=t===type?"flex":"none";
+    if(btn){btn.style.color=t===type?"#25d366":"#8696a0";btn.style.borderBottom=t===type?"3px solid #25d366":"3px solid transparent";}
+    const sec=$("status-"+t+"-section");if(sec)sec.style.display=t===type?"flex":"none";
   });
 }
 
@@ -1350,7 +1353,6 @@ function previewStatusPhoto(input){
   };
   r.readAsDataURL(input.files[0]);
 }
-
 function previewStatusVideo(input){
   if(!input.files||!input.files[0])return;
   _statusVideoFile=input.files[0];
@@ -1359,11 +1361,9 @@ function previewStatusVideo(input){
   if(vel){vel.src=url;vel.style.display="block";}
   if(vph)vph.style.display="none";
 }
-
 function toggleStatusAudio(){
   if(_statusAudioRec&&_statusAudioRec.state==="recording"){
-    _statusAudioRec.stop();
-    clearInterval(_statusAudioTimer);
+    _statusAudioRec.stop();clearInterval(_statusAudioTimer);
     const btn=$("status-audio-btn");if(btn)btn.textContent="🎤";
     const ast=$("status-audio-status");if(ast)ast.textContent="Enregistrement terminé ✅";
     const at=$("status-audio-timer");if(at)at.style.display="none";
@@ -1373,20 +1373,18 @@ function toggleStatusAudio(){
   navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
     const chunks=[];
     const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
-    try{_statusAudioRec=new MediaRecorder(stream,{mimeType:mime});}
-    catch(e){_statusAudioRec=new MediaRecorder(stream);}
+    try{_statusAudioRec=new MediaRecorder(stream,{mimeType:mime});}catch(e){_statusAudioRec=new MediaRecorder(stream);}
     _statusAudioRec.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data);};
     _statusAudioRec.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
       _statusAudioBlob=new Blob(chunks,{type:_statusAudioRec.mimeType||"audio/webm"});
       const url=URL.createObjectURL(_statusAudioBlob);
       const ap=$("status-audio-preview");if(ap){ap.src=url;ap.style.display="block";}
-      const ast=$("status-audio-status");if(ast)ast.textContent="Audio prêt — écoute avant de publier 🎧";
+      const ast=$("status-audio-status");if(ast)ast.textContent="Audio prêt 🎧";
     };
-    _statusAudioRec.start(200);
-    _statusAudioSecs=0;
+    _statusAudioRec.start(200);_statusAudioSecs=0;
     const btn=$("status-audio-btn");if(btn)btn.textContent="⏹️";
-    const ast=$("status-audio-status");if(ast)ast.textContent="🔴 Enregistrement en cours...";
+    const ast=$("status-audio-status");if(ast)ast.textContent="🔴 Enregistrement...";
     const at=$("status-audio-timer");if(at)at.style.display="block";
     clearInterval(_statusAudioTimer);
     _statusAudioTimer=setInterval(()=>{
@@ -1404,23 +1402,19 @@ async function saveStatus(){
   const caption=(captEl&&captEl.value.trim())||"";
 
   if(_statusType==="text"){
-    const inp=$("status-inp");
-    const text=inp?inp.value.trim():"";
+    const inp=$("status-inp");const text=inp?inp.value.trim():"";
     if(!text){showToast("❌ Écris quelque chose d'abord");return;}
     await _doPublish({type:"text",text,caption:text,url:""});
-
   }else if(_statusType==="photo"){
     if(!_statusPhotoData){showToast("❌ Choisissez une photo d'abord");return;}
     showToast("⏳ Publication...");
     await _doPublish({type:"photo",text:caption||"📷 Photo",caption,url:_statusPhotoData});
-
   }else if(_statusType==="video"){
     if(!_statusVideoFile){showToast("❌ Choisissez une vidéo d'abord");return;}
     showToast("⏳ Upload en cours...");
     const url=await uploadFile(_statusVideoFile,"statuses/videos");
-    if(!url){showToast("❌ Échec upload vidéo");return;}
+    if(!url){showToast("❌ Échec upload");return;}
     await _doPublish({type:"video",text:caption||"🎬 Vidéo",caption,url});
-
   }else if(_statusType==="audio"){
     if(!_statusAudioBlob||_statusAudioBlob.size<100){showToast("❌ Enregistre un audio d'abord");return;}
     showToast("⏳ Publication...");
@@ -1430,116 +1424,295 @@ async function saveStatus(){
   }
 }
 
+// Push un NOUVEAU statut (architecture WhatsApp: liste, pas un seul objet)
 async function _doPublish(data){
   const statusData={
-    ...data,
-    email:myEmail,color:myColor,pic:picData||"",
+    ...data,email:myEmail,color:myColor,pic:picData||"",
     views:[],viewCount:0,ts:Date.now()
   };
-  myStatus=data.text||"";
-  myStatusData=statusData;
-  localStorage.setItem("bstatus_"+myId(),myStatus);
   if(window._firebaseReady){
-    await window._set(getFB("statuses/"+myId()),statusData);
+    await window._push(getFB("statuses/"+myId()),statusData);
   }
+  localStorage.setItem("bstatus_"+myId(),data.text||"");
   closeStatusEditor();
-  renderStatus();
-  renderSettings();
+  loadMyStatuses();
   showToast("✅ Statut publié et visible par vos contacts !");
 }
 
-function deleteMyStatus(){
-  if(!confirm("Supprimer votre statut ?"))return;
-  myStatus="";myStatusData=null;
-  localStorage.removeItem("bstatus_"+myId());
-  if(window._firebaseReady){
-    window._set(getFB("statuses/"+myId()),null);
+function deleteCurrentStatus(){
+  if(!_svGroup||!_svGroup.statuses[_svIndex])return;
+  const st=_svGroup.statuses[_svIndex];
+  if(st.email!==myEmail)return; // ne peut supprimer que ses propres statuts
+  if(!confirm("Supprimer ce statut ?"))return;
+  if(window._firebaseReady&&st.id){
+    window._set(getFB("statuses/"+myId()+"/"+st.id),null);
   }
-  renderStatus();renderSettings();
   showToast("🗑 Statut supprimé");
+  closeStatusViewer();
+  loadMyStatuses();
 }
 
-function renderStatus(){
-  // Mon statut
-  const txt=$("my-status-text");
-  if(txt)txt.textContent=myStatus||"Appuie pour ajouter";
-  const actions=$("my-status-actions");
-  if(actions)actions.style.display=myStatus?"flex":"none";
-
-  // Avatar
-  const myAv=$("my-status-av");
-  if(myAv){
-    if(picData){myAv.innerHTML=`<img src="${picData}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;"/>`;}
-    else{myAv.style.background=myColor;myAv.textContent=myEmail.slice(0,2).toUpperCase();}
-  }
-
-  // Contacts statuses
-  const list=$("contacts-status-list");if(!list)return;
-  list.innerHTML="";
-  const active=contactsStatuses.filter(s=>Date.now()-s.ts<86400000);
-  if(!active.length){
-    list.innerHTML='<div style="padding:24px 16px;font-size:13px;color:#8696a0;text-align:center;">Aucun statut récent de vos contacts</div>';
-    return;
-  }
-  active.forEach(s=>{
-    const c=myContacts.find(x=>x.email===s.email)||{name:s.email,color:s.color||"#8696a0",ini:(s.email||"?").substring(0,2).toUpperCase(),pic:s.pic||"",customName:""};
-    const ago=timeSince(s.ts);
-    const typeIcon=s.type==="photo"?"📷":s.type==="video"?"🎬":s.type==="audio"?"🎤":"💬";
-    const div=document.createElement("div");
-    div.style.cssText="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0f2f5;cursor:pointer;";
-    div.onclick=()=>openStatusViewer(s,c);
-    const avInner=c.pic?`<img src="${c.pic}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;display:block;"/>`:
-      `<div style="width:50px;height:50px;border-radius:50%;background:${c.color||"#25d366"};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;">${c.ini||"?"}</div>`;
-    div.innerHTML=`<div style="padding:2px;border-radius:50%;background:linear-gradient(135deg,#25d366,#128c7e);flex-shrink:0;">${avInner}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:700;color:#111b21;">${esc(dispName(c))}</div>
-        <div style="font-size:12px;color:#667781;margin-top:2px;">${typeIcon} ${ago}</div>
-      </div>`;
-    list.appendChild(div);
+// ── CHARGEMENT MES STATUTS ───────────────────────────────────────────────
+function loadMyStatuses(){
+  if(!window._firebaseReady||!myEmail)return;
+  window._onValue(getFB("statuses/"+myId()),snap=>{
+    const list=[];
+    snap.forEach(ch=>{
+      const v=ch.val();
+      if(v&&v.ts&&Date.now()-v.ts<86400000)list.push({...v,id:ch.key});
+    });
+    myStatuses=list.sort((a,b)=>a.ts-b.ts);
+    renderMyStatusRow();
   });
 }
 
-// STATUS VIEWER
-function openStatusViewer(s,c){
-  // Register view
-  if(window._firebaseReady&&s.email&&s.email!==myEmail){
-    const sid=toId(s.email);
-    const views=Array.isArray(s.views)?[...s.views]:[];
-    if(!views.includes(myEmail)){
-      views.push(myEmail);
-      window._update(getFB("statuses/"+sid),{views,viewCount:views.length});
-      s.views=views;s.viewCount=views.length;
-    }
+function renderMyStatusRow(){
+  const txt=$("my-status-text");
+  if(txt)txt.textContent=myStatuses.length?myStatuses.length+" statut(s) · appuie pour voir":"Appuie pour ajouter";
+  const av=$("my-status-av");
+  if(av){
+    if(picData){av.innerHTML=`<img src="${picData}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;"/>`;}
+    else{av.style.background=myColor;av.textContent=myEmail.slice(0,2).toUpperCase();}
   }
+  drawRing("my-status-ring",myStatuses.length,myStatuses.length,"#25d366");
+}
+
+// Dessine l'anneau segmenté (style Instagram/WhatsApp stories)
+function drawRing(svgId,total,unseen,color){
+  const svg=$(svgId);if(!svg)return;
+  svg.innerHTML="";
+  if(total===0)return;
+  const r=25,cx=27,cy=27,gap=4;
+  const circumference=2*Math.PI*r;
+  const segLen=(circumference-total*gap)/total;
+  let offset=0;
+  for(let i=0;i<total;i++){
+    const seen=i>=unseen;
+    const circle=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    circle.setAttribute("cx",cx);circle.setAttribute("cy",cy);circle.setAttribute("r",r);
+    circle.setAttribute("fill","none");
+    circle.setAttribute("stroke",seen?"#bdbdbd":color);
+    circle.setAttribute("stroke-width","2.5");
+    circle.setAttribute("stroke-dasharray",segLen+" "+(circumference-segLen));
+    circle.setAttribute("stroke-dashoffset",-offset);
+    circle.setAttribute("stroke-linecap","round");
+    svg.appendChild(circle);
+    offset+=segLen+gap;
+  }
+}
+
+// ── CHARGEMENT STATUTS DES CONTACTS (groupés) ────────────────────────────
+let _viewedStatusIds=new Set(JSON.parse(localStorage.getItem("bsv")||"[]"));
+function saveViewedIds(){localStorage.setItem("bsv",JSON.stringify([..._viewedStatusIds]));}
+
+function loadContactsStatuses(){
+  if(!window._firebaseReady||!myEmail)return;
+  window._onValue(getFB("statuses"),snap=>{
+    const byEmail={};
+    snap.forEach(userSnap=>{
+      const uid=userSnap.key;
+      if(uid===myId())return; // skip my own
+      userSnap.forEach(stSnap=>{
+        const v=stSnap.val();
+        if(!v||!v.email||!v.ts||Date.now()-v.ts>=86400000)return;
+        if(!byEmail[v.email])byEmail[v.email]=[];
+        byEmail[v.email].push({...v,id:stSnap.key});
+      });
+    });
+    contactsStatusGroups=Object.keys(byEmail).map(email=>{
+      const statuses=byEmail[email].sort((a,b)=>a.ts-b.ts);
+      const c=myContacts.find(x=>x.email===email)||{name:email,email,color:statuses[0].color||"#8696a0",ini:email.substring(0,2).toUpperCase(),pic:statuses[0].pic||"",customName:""};
+      const unseenCount=statuses.filter(s=>!_viewedStatusIds.has(s.id)).length;
+      return{email,c,statuses,unseenCount};
+    }).sort((a,b)=>{
+      // Non vus en premier, triés par plus récent
+      if(a.unseenCount>0&&b.unseenCount===0)return-1;
+      if(a.unseenCount===0&&b.unseenCount>0)return 1;
+      return b.statuses[b.statuses.length-1].ts-a.statuses[a.statuses.length-1].ts;
+    });
+    renderContactsStatusLists();
+  });
+}
+
+function renderContactsStatusLists(){
+  const recentList=$("status-recent-list"),viewedList=$("status-viewed-list");
+  const recentBlock=$("status-recent-block"),viewedBlock=$("status-viewed-block");
+  if(!recentList||!viewedList)return;
+  recentList.innerHTML="";viewedList.innerHTML="";
+
+  const recent=contactsStatusGroups.filter(g=>g.unseenCount>0);
+  const viewed=contactsStatusGroups.filter(g=>g.unseenCount===0);
+
+  if(!recent.length){
+    recentBlock.style.display="none";
+  }else{
+    recentBlock.style.display="block";
+    recent.forEach(g=>renderStatusGroupRow(recentList,g));
+  }
+  if(!viewed.length){
+    viewedBlock.style.display="none";
+  }else{
+    viewedBlock.style.display="block";
+    viewed.forEach(g=>renderStatusGroupRow(viewedList,g));
+  }
+}
+
+function renderStatusGroupRow(container,g){
+  const {c,statuses,unseenCount}=g;
+  const last=statuses[statuses.length-1];
+  const ago=timeSince(last.ts);
+  const typeIcon=last.type==="photo"?"📷":last.type==="video"?"🎬":last.type==="audio"?"🎤":"💬";
+  const div=document.createElement("div");
+  div.style.cssText="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;";
+  div.onclick=()=>openStatusGroup(g);
+  const avInner=c.pic?`<img src="${c.pic}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;display:block;"/>`:
+    `<div style="width:48px;height:48px;border-radius:50%;background:${c.color||"#25d366"};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;">${c.ini||"?"}</div>`;
+  const ringId="ring_"+toId(g.email);
+  div.innerHTML=`<div style="position:relative;width:54px;height:54px;flex-shrink:0;">
+      <svg id="${ringId}" width="54" height="54" style="position:absolute;top:0;left:0;transform:rotate(-90deg);"></svg>
+      <div style="position:absolute;top:3px;left:3px;">${avInner}</div>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:700;color:#111b21;">${esc(dispName(c))}</div>
+      <div style="font-size:12px;color:#667781;margin-top:2px;">${typeIcon} ${ago} · ${statuses.length} statut${statuses.length>1?"s":""}</div>
+    </div>`;
+  container.appendChild(div);
+  setTimeout(()=>drawRing(ringId,statuses.length,unseenCount,"#25d366"),0);
+}
+
+// ── VIEWER (style stories WhatsApp) ──────────────────────────────────────
+function openStatusGroup(g){
+  _svGroupList=contactsStatusGroups;
+  _svGroupIdx=_svGroupList.findIndex(x=>x.email===g.email);
+  _svGroup=g;
+  _svIndex=g.statuses.findIndex(s=>!_viewedStatusIds.has(s.id));
+  if(_svIndex<0)_svIndex=0;
+  _openSvViewer();
+}
+
+function viewMyStatus(){
+  if(!myStatuses.length){openAddStatus();return;}
+  const me={name:myEmail,email:myEmail,color:myColor,ini:myEmail.substring(0,2).toUpperCase(),pic:picData||"",customName:""};
+  _svGroupList=[];_svGroupIdx=0;
+  _svGroup={email:myEmail,c:me,statuses:myStatuses};
+  _svIndex=0;
+  _openSvViewer();
+}
+
+function _openSvViewer(){
   const viewer=$("status-viewer");if(!viewer)return;
   viewer.style.display="flex";
-  // Avatar
+  _renderSvProgressBars();
+  _showSvStatus();
+}
+
+function _renderSvProgressBars(){
+  const row=$("sv-progress-row");if(!row||!_svGroup)return;
+  row.innerHTML="";
+  _svGroup.statuses.forEach((s,i)=>{
+    const bar=document.createElement("div");
+    bar.style.cssText="flex:1;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden;";
+    const fill=document.createElement("div");
+    fill.id="sv-bar-"+i;
+    fill.style.cssText="height:100%;background:#fff;border-radius:2px;width:"+(i<_svIndex?"100%":"0%")+";";
+    bar.appendChild(fill);
+    row.appendChild(bar);
+  });
+}
+
+function _showSvStatus(){
+  if(!_svGroup||!_svGroup.statuses[_svIndex]){closeStatusViewer();return;}
+  const s=_svGroup.statuses[_svIndex],c=_svGroup.c;
+  const isMine=s.email===myEmail;
+
+  // Mark as viewed (not for own status)
+  if(!isMine){
+    _viewedStatusIds.add(s.id);saveViewedIds();
+    if(window._firebaseReady){
+      const views=Array.isArray(s.views)?[...s.views]:[];
+      if(!views.includes(myEmail)){
+        views.push(myEmail);
+        window._update(getFB("statuses/"+toId(s.email)+"/"+s.id),{views,viewCount:views.length});
+        s.views=views;s.viewCount=views.length;
+      }
+    }
+  }
+
+  // Header
   const av=$("sv-av");
   if(av){av.style.background=c.color||"#25d366";av.innerHTML=c.pic?`<img src="${c.pic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"/>`:c.ini||"?";}
   $("sv-name").textContent=dispName(c);
   $("sv-time").textContent=timeSince(s.ts);
-  // Reset content
-  ["sv-img","sv-vid","sv-aud","sv-text-display"].forEach(id=>{const el=$(id);if(el){el.style.display="none";if(id==="sv-vid"||id==="sv-aud")el.src="";}});
-  $("sv-caption").textContent=s.caption||s.text||"";
-  // Show content by type
+  $("sv-delete-btn").style.display=isMine?"flex":"none";
+
+  // Content reset
+  ["sv-img","sv-vid","sv-aud"].forEach(id=>{const el=$(id);if(el){el.style.display="none";if(id!=="sv-img")el.src="";}});
+  const td=$("sv-text-display");td.style.display="none";td.innerHTML="";
+  $("sv-caption").textContent=s.caption||"";
+
   if(s.type==="photo"&&s.url){const el=$("sv-img");el.src=s.url;el.style.display="block";}
   else if(s.type==="video"&&s.url){const el=$("sv-vid");el.src=s.url;el.style.display="block";el.play().catch(()=>{});}
   else if(s.type==="audio"&&s.url){const el=$("sv-aud");el.src=s.url;el.style.display="block";el.play().catch(()=>{});}
-  else{const el=$("sv-text-display");if(el){el.textContent=s.text||"";el.style.cssText="display:flex;align-items:center;justify-content:center;padding:30px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.5;width:100%;";}}
-  // Views
-  const views=Array.isArray(s.views)?s.views:[];
-  const vc=$("sv-view-count");if(vc)vc.textContent=s.viewCount||views.length;
-  const vl=$("sv-viewers-list");if(vl&&views.length)vl.textContent="Vus par: "+views.map(v=>v.split("@")[0]).join(", ");
-  // Progress for text/audio
-  const prog=$("sv-progress");if(prog)prog.style.width="0%";
-  const dur=(s.type==="text")?6000:0;
-  if(dur>0&&prog){
-    const start=Date.now();clearInterval(_svTimer);
-    _svTimer=setInterval(()=>{
-      const pct=Math.min(100,(Date.now()-start)/dur*100);
-      prog.style.width=pct+"%";
-      if(pct>=100){clearInterval(_svTimer);}
-    },50);
+  else{
+    td.style.cssText="display:flex;align-items:center;justify-content:center;padding:30px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.5;width:100%;";
+    td.textContent=s.text||"";
+  }
+
+  // Views (only show count for own status)
+  const viewsRow=$("sv-views-row"),viewersList=$("sv-viewers-list");
+  if(isMine){
+    const views=Array.isArray(s.views)?s.views:[];
+    viewsRow.style.display="flex";
+    $("sv-view-count").textContent=s.viewCount||views.length;
+    viewersList.textContent=views.length?"Vus par: "+views.map(v=>v.split("@")[0]).join(", "):"";
+  }else{
+    viewsRow.style.display="none";viewersList.textContent="";
+  }
+
+  // Progress animation
+  _svDuration=(s.type==="video")?15000:(s.type==="audio")?8000:5000;
+  _startSvProgress();
+}
+
+function _startSvProgress(){
+  clearInterval(_svTimer);
+  // Reset future bars, complete past bars
+  _svGroup.statuses.forEach((s,i)=>{
+    const fill=$("sv-bar-"+i);if(!fill)return;
+    if(i<_svIndex)fill.style.width="100%";
+    else if(i>_svIndex)fill.style.width="0%";
+  });
+  const curBar=$("sv-bar-"+_svIndex);
+  if(curBar)curBar.style.width="0%";
+  _svStart=Date.now();_svPaused=false;
+  _svTimer=setInterval(()=>{
+    if(_svPaused)return;
+    const pct=Math.min(100,(Date.now()-_svStart)/_svDuration*100);
+    if(curBar)curBar.style.width=pct+"%";
+    if(pct>=100){clearInterval(_svTimer);svNext();}
+  },50);
+}
+
+function svNext(){
+  clearInterval(_svTimer);
+  if(_svIndex<_svGroup.statuses.length-1){
+    _svIndex++;_showSvStatus();
+  }else{
+    // Next contact group
+    if(_svGroupList.length&&_svGroupIdx<_svGroupList.length-1){
+      _svGroupIdx++;_svGroup=_svGroupList[_svGroupIdx];_svIndex=0;
+      _renderSvProgressBars();_showSvStatus();
+    }else{
+      closeStatusViewer();
+    }
+  }
+}
+function svPrev(){
+  clearInterval(_svTimer);
+  if(_svIndex>0){_svIndex--;_showSvStatus();}
+  else if(_svGroupList.length&&_svGroupIdx>0){
+    _svGroupIdx--;_svGroup=_svGroupList[_svGroupIdx];_svIndex=_svGroup.statuses.length-1;
+    _renderSvProgressBars();_showSvStatus();
   }
 }
 
@@ -1548,32 +1721,10 @@ function closeStatusViewer(){
   const v=$("status-viewer");if(v)v.style.display="none";
   const vid=$("sv-vid");if(vid){vid.pause();vid.src="";}
   const aud=$("sv-aud");if(aud){aud.pause();aud.src="";}
-}
-
-function viewMyStatus(){
-  if(!myStatusData&&!myStatus){openAddStatus();return;}
-  if(window._firebaseReady){
-    window._onValue(getFB("statuses/"+myId()),snap=>{
-      const d=snap.val();
-      if(!d){openAddStatus();return;}
-      myStatusData=d;
-      const me={name:myEmail,email:myEmail,color:myColor,ini:myEmail.substring(0,2).toUpperCase(),pic:picData||"",customName:""};
-      openStatusViewer({...d,views:d.views||[]},me);
-    },{onlyOnce:true});
-  }
-}
-
-function loadContactsStatuses(){
-  if(!window._firebaseReady||!myEmail)return;
-  window._onValue(getFB("statuses"),snap=>{
-    const list=[];
-    snap.forEach(ch=>{
-      const d=ch.val();
-      if(d&&d.email&&d.email!==myEmail&&d.ts&&Date.now()-d.ts<86400000)list.push(d);
-    });
-    contactsStatuses=list.sort((a,b)=>b.ts-a.ts);
-    if($("status-panel")&&$("status-panel").style.display!=="none")renderStatus();
-  });
+  // Refresh lists (move viewed statuses to "Vues")
+  renderContactsStatusLists();
+  renderMyStatusRow();
+  _svGroup=null;
 }
 
 function timeSince(ts){
@@ -2570,7 +2721,7 @@ function loginOk(){
   myDisplayName=localStorage.getItem("bdn_"+myId())||"";
   if(window._firebaseReady){
     window._set(getFB("users/"+myId()+"/profile"),{email:myEmail,pic:picData||"",color:myColor,lastSeen:Date.now()});
-    loadContactsFB();startPresence();listenIncoming();listenForCalls();loadContactsStatuses();
+    loadContactsFB();startPresence();listenIncoming();listenForCalls();loadContactsStatuses();loadMyStatuses();
   }
   setTimeout(()=>$("login").classList.add("hidden"),400);
 }
@@ -2680,15 +2831,14 @@ if(_savedEmail){
   myEmail=_savedEmail;
   myColor=localStorage.getItem("bc")||"#25d366";
   picData=localStorage.getItem("bp")||null;
-  myStatus=localStorage.getItem("bstatus_"+_savedEmail.replace(/[^a-zA-Z0-9]/g,"_"))||"";
-  if(myStatus&&window._firebaseReady){window._onValue(getFB("statuses/"+_savedEmail.replace(/[^a-zA-Z0-9]/g,"_")),snap=>{myStatusData=snap.val();},{onlyOnce:true});}
+  // myStatuses chargé via loadMyStatuses() après connexion Firebase
   myDisplayName=localStorage.getItem("bdn_"+_savedEmail.replace(/[^a-zA-Z0-9]/g,"_"))||"";
   // Dark mode
   if(localStorage.getItem("bdark")==="1"){_darkMode=false;toggleTheme();}
   applyAvatar();$("login").classList.add("hidden");
   loadCache();
   loadCallLog();
-  const onFB=()=>{loadContactsFB();startPresence();listenIncoming();listenForCalls();loadContactsStatuses();};
+  const onFB=()=>{loadContactsFB();startPresence();listenIncoming();listenForCalls();loadContactsStatuses();loadMyStatuses();};
   if(window._firebaseReady){onFB();}
   else window.addEventListener("firebaseReady",onFB,{once:true});
 }else{
