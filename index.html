@@ -768,7 +768,60 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 <!-- STATUS VIEWER (plein écran - HORS sidebar) -->
 
 <!-- STATUS MODAL -->
+<div id="status-modal" onclick="if(event.target===this)closeStatusModal()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:99999;align-items:flex-end;justify-content:center;">
+    <div style="width:100%;max-width:480px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 36px;animation:sup .25s ease;">
+      <div style="width:38px;height:4px;background:#e9edef;border-radius:4px;margin:0 auto 14px;"></div>
+      <div style="font-size:16px;font-weight:800;text-align:center;color:#111b21;margin-bottom:16px;">Ajouter un statut</div>
 
+      <!-- Type selector -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button id="stype-text" onclick="setStatusType('text')" style="flex:1;padding:10px 6px;border:2px solid #25d366;border-radius:12px;background:#f0fdf4;color:#15803d;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">✏️ Texte</button>
+        <button id="stype-photo" onclick="setStatusType('photo')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">📷 Photo</button>
+        <button id="stype-video" onclick="setStatusType('video')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">🎬 Vidéo</button>
+        <button id="stype-audio" onclick="setStatusType('audio')" style="flex:1;padding:10px 6px;border:2px solid #e9edef;border-radius:12px;background:#fff;color:#667781;font-family:var(--F);font-size:13px;font-weight:700;cursor:pointer;">🎤 Audio</button>
+      </div>
+
+      <!-- Texte -->
+      <div id="status-text-section">
+        <textarea id="status-inp" placeholder="Que pensez-vous aujourd'hui ?" maxlength="139" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:15px;outline:none;resize:none;height:90px;color:#111b21;box-sizing:border-box;"></textarea>
+        <div style="font-size:11px;color:#8696a0;text-align:right;margin:4px 0 10px;">Max 139 caractères</div>
+      </div>
+
+      <!-- Photo -->
+      <div id="status-photo-section" style="display:none;">
+        <div id="status-photo-preview" onclick="document.getElementById('status-photo-inp').click()" style="width:100%;height:200px;background:#f0f2f5;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
+          <div id="status-photo-placeholder" style="text-align:center;color:#8696a0;"><div style="font-size:40px;">📷</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une photo</div></div>
+          <img id="status-photo-img" style="display:none;width:100%;height:100%;object-fit:cover;" alt=""/>
+        </div>
+        <input type="file" id="status-photo-inp" accept="image/*" style="display:none" onchange="previewStatusPhoto(this)"/>
+        <input type="text" id="status-photo-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
+
+      <!-- Vidéo -->
+      <div id="status-video-section" style="display:none;">
+        <div id="status-video-preview" onclick="document.getElementById('status-video-inp').click()" style="width:100%;height:200px;background:#000;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:10px;position:relative;">
+          <div id="status-video-placeholder" style="text-align:center;color:#fff;"><div style="font-size:40px;">🎬</div><div style="font-size:13px;margin-top:8px;">Appuie pour choisir une vidéo</div></div>
+          <video id="status-video-el" style="display:none;width:100%;height:100%;object-fit:cover;" muted playsinline></video>
+        </div>
+        <input type="file" id="status-video-inp" accept="video/*" style="display:none" onchange="previewStatusVideo(this)"/>
+        <input type="text" id="status-video-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
+
+      <!-- Audio -->
+      <div id="status-audio-section" style="display:none;">
+        <div style="background:#f0f2f5;border-radius:14px;padding:20px;text-align:center;margin-bottom:10px;">
+          <div id="status-audio-status" style="font-size:14px;color:#667781;margin-bottom:14px;">Appuie pour enregistrer</div>
+          <button id="status-audio-btn" onclick="toggleStatusAudio()" style="width:70px;height:70px;border-radius:50%;background:#25d366;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;">🎤</button>
+          <div id="status-audio-timer" style="font-size:18px;font-weight:700;color:#111b21;margin-top:12px;display:none;">0:00</div>
+          <audio id="status-audio-preview" controls style="width:100%;margin-top:12px;display:none;"></audio>
+        </div>
+        <input type="text" id="status-audio-caption" placeholder="Ajouter une légende..." maxlength="100" style="width:100%;padding:12px 14px;background:#f0f2f5;border:none;border-radius:14px;font-family:var(--F);font-size:14px;outline:none;box-sizing:border-box;margin-bottom:10px;"/>
+      </div>
+
+      <button onclick="saveStatus()" style="width:100%;padding:14px;background:#25d366;border:none;border-radius:13px;color:#000;font-family:var(--F);font-size:15px;font-weight:800;cursor:pointer;">✅ Publier</button>
+      <button onclick="closeStatusModal()" style="width:100%;padding:12px;background:#f0f2f5;border:none;border-radius:13px;color:#667781;font-family:var(--F);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">Annuler</button>
+    </div>
+  </div>
 
 <div id="status-viewer" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:99999;flex-direction:column;">
   <div style="position:absolute;top:0;left:0;right:0;z-index:2;padding:10px 10px 0;">
@@ -799,73 +852,10 @@ body{font-family:var(--F);background:var(--bg);color:var(--tx);height:100dvh;dis
 
 
 
-<!-- STATUS EDITOR - plein écran comme call-screen -->
-<div id="status-editor" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:99999;flex-direction:column;overflow-y:auto;">
-  
-  <!-- Header -->
-  <div style="background:#25d366;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
-    <button onclick="closeStatusEditor()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:4px;">✕</button>
-    <span style="font-size:16px;font-weight:800;color:#fff;flex:1;">Nouveau statut</span>
-    <button onclick="saveStatus()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;padding:8px 16px;border-radius:20px;">Publier ✅</button>
-  </div>
-
-  <!-- Type selector -->
-  <div style="display:flex;gap:0;border-bottom:2px solid #e9edef;flex-shrink:0;">
-    <button id="stype-text" onclick="setStatusType('text')" style="flex:1;padding:12px 4px;border:none;background:#fff;color:#25d366;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid #25d366;">✏️ Texte</button>
-    <button id="stype-photo" onclick="setStatusType('photo')" style="flex:1;padding:12px 4px;border:none;background:#fff;color:#8696a0;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;">📷 Photo</button>
-    <button id="stype-video" onclick="setStatusType('video')" style="flex:1;padding:12px 4px;border:none;background:#fff;color:#8696a0;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;">🎬 Vidéo</button>
-    <button id="stype-audio" onclick="setStatusType('audio')" style="flex:1;padding:12px 4px;border:none;background:#fff;color:#8696a0;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;">🎤 Audio</button>
-  </div>
-
-  <!-- Content area -->
-  <div style="flex:1;padding:20px 16px;display:flex;flex-direction:column;gap:14px;">
-    
-    <!-- TEXT -->
-    <div id="status-text-section" style="display:flex;flex-direction:column;gap:10px;">
-      <textarea id="status-inp" maxlength="139" placeholder="Que pensez-vous aujourd'hui ?" style="width:100%;min-height:140px;padding:16px;background:#f0f2f5;border:none;border-radius:16px;font-family:'Nunito',sans-serif;font-size:17px;outline:none;resize:none;color:#111b21;box-sizing:border-box;line-height:1.5;"></textarea>
-      <div style="font-size:12px;color:#8696a0;text-align:right;">Max 139 caractères</div>
-    </div>
-
-    <!-- PHOTO -->
-    <div id="status-photo-section" style="display:none;flex-direction:column;gap:10px;">
-      <div onclick="document.getElementById('status-photo-inp').click()" style="width:100%;height:220px;background:#f0f2f5;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;">
-        <div id="status-photo-placeholder" style="text-align:center;color:#8696a0;"><div style="font-size:48px;">📷</div><div style="font-size:14px;margin-top:10px;font-weight:600;">Choisir une photo</div></div>
-        <img id="status-photo-img" style="display:none;width:100%;height:100%;object-fit:cover;" alt=""/>
-      </div>
-      <input type="file" id="status-photo-inp" accept="image/*" style="display:none" onchange="previewStatusPhoto(this)"/>
-      <input type="text" id="status-photo-caption" placeholder="Légende (optionnel)" maxlength="100" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;outline:none;box-sizing:border-box;"/>
-    </div>
-
-    <!-- VIDEO -->
-    <div id="status-video-section" style="display:none;flex-direction:column;gap:10px;">
-      <div onclick="document.getElementById('status-video-inp').click()" style="width:100%;height:220px;background:#111;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;">
-        <div id="status-video-placeholder" style="text-align:center;color:#fff;"><div style="font-size:48px;">🎬</div><div style="font-size:14px;margin-top:10px;font-weight:600;">Choisir une vidéo</div></div>
-        <video id="status-video-el" style="display:none;width:100%;height:100%;object-fit:cover;" muted playsinline></video>
-      </div>
-      <input type="file" id="status-video-inp" accept="video/*" style="display:none" onchange="previewStatusVideo(this)"/>
-      <input type="text" id="status-video-caption" placeholder="Légende (optionnel)" maxlength="100" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;outline:none;box-sizing:border-box;"/>
-    </div>
-
-    <!-- AUDIO -->
-    <div id="status-audio-section" style="display:none;flex-direction:column;gap:10px;">
-      <div style="background:#f0f2f5;border-radius:16px;padding:30px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;">
-        <div id="status-audio-status" style="font-size:15px;color:#667781;font-weight:600;">Appuie pour enregistrer</div>
-        <button id="status-audio-btn" onclick="toggleStatusAudio()" style="width:80px;height:80px;border-radius:50%;background:#25d366;border:none;font-size:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.4);">🎤</button>
-        <div id="status-audio-timer" style="font-size:24px;font-weight:800;color:#111b21;display:none;">0:00</div>
-        <audio id="status-audio-preview" controls style="width:100%;display:none;"></audio>
-      </div>
-      <input type="text" id="status-audio-caption" placeholder="Légende (optionnel)" maxlength="100" style="width:100%;padding:14px;background:#f0f2f5;border:none;border-radius:14px;font-family:'Nunito',sans-serif;font-size:15px;outline:none;box-sizing:border-box;"/>
-    </div>
-
-    <!-- Publish button at bottom -->
-    <button onclick="saveStatus()" style="width:100%;padding:16px;background:#25d366;border:none;border-radius:16px;color:#000;font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;cursor:pointer;margin-top:10px;">✅ Publier le statut</button>
-  </div>
-</div>
-
 <div id="toast"></div>
 <script>
 // ══ VERSION ══
-const APP_VERSION="3.9.4";
+const APP_VERSION="3.9.3";
 (function(){
   const sv=localStorage.getItem("bv");
   if(sv&&sv!==APP_VERSION){
@@ -1294,7 +1284,7 @@ function openAddStatus(){
   _statusPhotoData=null;
   _statusVideoFile=null;
   _statusAudioBlob=null;
-  // Reset all fields
+  // Reset form
   const inp=$("status-inp");if(inp)inp.value=myStatus||"";
   const ap=$("status-audio-preview");if(ap){ap.style.display="none";ap.src="";}
   const at=$("status-audio-timer");if(at)at.style.display="none";
@@ -1304,21 +1294,22 @@ function openAddStatus(){
   const ph=$("status-photo-placeholder");if(ph)ph.style.display="block";
   const vel=$("status-video-el");if(vel){vel.src="";vel.style.display="none";}
   const vph=$("status-video-placeholder");if(vph)vph.style.display="block";
-  // Show full page editor
-  const editor=$("status-editor");
-  if(editor){editor.style.display="flex";}
+  // Show modal
+  const modal=$("status-modal");
+  if(!modal){showToast("❌ Erreur: modal introuvable");return;}
+  modal.style.cssText="display:flex !important;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:99999;align-items:flex-end;justify-content:center;";
   setStatusType("text");
-  setTimeout(()=>{const i=$("status-inp");if(i)i.focus();},200);
+  setTimeout(()=>{const i=$("status-inp");if(i)i.focus();},300);
 }
-
-function closeStatusEditor(){
-  const editor=$("status-editor");
-  if(editor)editor.style.display="none";
-  if(_statusAudioRec&&_statusAudioRec.state!=="inactive"){try{_statusAudioRec.stop();}catch(e){}}
+function closeStatusModal(){
+  const modal=$("status-modal");
+  if(modal)modal.style.cssText="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:99999;align-items:flex-end;justify-content:center;";
+  if(_statusAudioRec&&_statusAudioRec.state!=="inactive"){
+    try{_statusAudioRec.stop();}catch(e){}
+  }
   clearInterval(_statusAudioTimer);
   _statusAudioRec=null;_statusAudioBlob=null;
 }
-function closeStatusModal(){closeStatusEditor();}
 
 function setStatusType(type){
   _statusType=type;
@@ -1326,11 +1317,12 @@ function setStatusType(type){
     const btn=$("stype-"+t);
     if(btn){
       const active=t===type;
-      btn.style.color=active?"#25d366":"#8696a0";
-      btn.style.borderBottom=active?"3px solid #25d366":"3px solid transparent";
+      btn.style.borderColor=active?"#25d366":"#e9edef";
+      btn.style.background=active?"#f0fdf4":"#fff";
+      btn.style.color=active?"#15803d":"#667781";
     }
     const sec=$("status-"+t+"-section");
-    if(sec)sec.style.display=active?(t==="text"?"flex":"flex"):"none";
+    if(sec)sec.style.display=active?"block":"none";
   });
 }
 
@@ -1450,7 +1442,7 @@ async function _publishStatus(data){
   if(window._firebaseReady){
     await window._set(getFB("statuses/"+myId()),statusData);
   }
-  closeStatusEditor();
+  closeStatusModal();
   renderStatus();renderSettings();
   showToast("✅ Statut publié !");
 }
@@ -2670,8 +2662,6 @@ window.addEventListener("popstate",e=>{
     closeChatMenu();
   }else if($("media-picker")&&$("media-picker").classList.contains("show")){
     closeMediaPicker();
-  }else if($("status-editor")&&$("status-editor").style.display==="flex"){
-    closeStatusEditor();
   }else if($("status-viewer")&&$("status-viewer").style.display==="flex"){
     closeStatusViewer();
   }else if($("call-screen")&&$("call-screen").style.display==="flex"){
